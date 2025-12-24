@@ -14,6 +14,8 @@
 	"license": "0-BSD",
 	"devDependencies": {
 		"@types/node": "^16.11.6",
+		"@types/react": "^18.2.79",
+		"@types/react-dom": "^18.2.25",
 		"esbuild": "0.25.5",
 		"eslint-plugin-obsidianmd": "0.1.9",
 		"globals": "14.0.0",
@@ -25,6 +27,8 @@
 		"@openai/codex-sdk":"^0.77.0"
 	},
 	"dependencies": {
-		"obsidian": "latest"
+		"obsidian": "latest",
+		"react": "^18.2.0",
+		"react-dom": "^18.2.0"
 	}
 }

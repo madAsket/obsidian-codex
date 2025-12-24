@@ -1,8 +1,331 @@
-/*
+.codex-view {
+  --codex-bg: radial-gradient(
+      circle at 10% 12%,
+      rgba(62, 217, 196, 0.12),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 90% 18%,
+      rgba(78, 161, 255, 0.14),
+      transparent 45%
+    ),
+    linear-gradient(180deg, #0e131b 0%, #0b1016 100%);
+  --codex-panel: rgba(15, 22, 32, 0.88);
+  --codex-panel-solid: #121923;
+  --codex-border: rgba(148, 163, 184, 0.18);
+  --codex-text: #e6edf5;
+  --codex-muted: #9fb0c7;
+  --codex-accent: #3ed9c4;
+  --codex-accent-strong: #24b7a4;
+  --codex-accent-alt: #4ea1ff;
+  --codex-warning: #ffb347;
+  --codex-danger: #ff6b6b;
+  --codex-shadow: 0 18px 32px rgba(3, 7, 12, 0.35);
+  height: 100%;
+  color: var(--codex-text);
+  font-family: "Space Grotesk", "IBM Plex Sans", "SF Pro Text", sans-serif;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.codex-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: var(--codex-bg);
+}
 
-If your plugin does not need CSS, delete this file.
+.codex-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
 
-*/
+.codex-title {
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.codex-status {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--codex-border);
+  background: rgba(12, 17, 24, 0.7);
+  color: var(--codex-muted);
+}
+
+.codex-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--codex-muted);
+  box-shadow: 0 0 12px rgba(120, 140, 160, 0.35);
+}
+
+.codex-status-ready {
+  color: var(--codex-accent);
+  border-color: rgba(62, 217, 196, 0.4);
+}
+
+.codex-status-ready .codex-status-dot {
+  background: var(--codex-accent);
+  box-shadow: 0 0 12px rgba(62, 217, 196, 0.6);
+}
+
+.codex-status-busy {
+  color: var(--codex-accent-alt);
+  border-color: rgba(78, 161, 255, 0.45);
+}
+
+.codex-status-busy .codex-status-dot {
+  background: var(--codex-accent-alt);
+  animation: codex-pulse 1.6s ease-in-out infinite;
+}
+
+.codex-status-needs-login {
+  color: var(--codex-warning);
+  border-color: rgba(255, 179, 71, 0.4);
+}
+
+.codex-status-needs-login .codex-status-dot {
+  background: var(--codex-warning);
+}
+
+.codex-status-error {
+  color: var(--codex-danger);
+  border-color: rgba(255, 107, 107, 0.4);
+}
+
+.codex-status-error .codex-status-dot {
+  background: var(--codex-danger);
+}
+
+.codex-stop {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 107, 107, 0.5);
+  background: rgba(255, 107, 107, 0.12);
+  color: var(--codex-danger);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.codex-stop:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.codex-stop:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(255, 107, 107, 0.2);
+}
+
+.codex-status-block {
+  background: var(--codex-panel);
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--codex-border);
+  box-shadow: var(--codex-shadow);
+}
+
+.codex-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.18);
+  font-size: 13px;
+}
+
+.codex-status-row:last-of-type {
+  border-bottom: none;
+}
+
+.codex-status-label {
+  color: var(--codex-muted);
+}
+
+.codex-status-value {
+  color: var(--codex-text);
+  font-weight: 600;
+}
+
+.codex-status-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--codex-warning);
+}
+
+.codex-status-alert {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--codex-danger);
+}
+
+.codex-transcript {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 6px;
+}
+
+.codex-empty {
+  padding: 18px;
+  border-radius: 12px;
+  background: rgba(10, 15, 22, 0.6);
+  border: 1px dashed rgba(148, 163, 184, 0.25);
+  color: var(--codex-muted);
+  font-size: 13px;
+}
+
+.codex-message {
+  max-width: 90%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: rgba(12, 17, 24, 0.85);
+  box-shadow: 0 12px 20px rgba(2, 5, 9, 0.35);
+}
+
+.codex-message-user {
+  align-self: flex-end;
+  border-color: rgba(62, 217, 196, 0.4);
+  background: linear-gradient(
+    135deg,
+    rgba(62, 217, 196, 0.2),
+    rgba(62, 217, 196, 0.05)
+  );
+}
+
+.codex-message-assistant {
+  align-self: flex-start;
+  border-color: rgba(78, 161, 255, 0.35);
+  background: linear-gradient(
+    135deg,
+    rgba(78, 161, 255, 0.15),
+    rgba(12, 17, 24, 0.9)
+  );
+}
+
+.codex-message-system {
+  align-self: center;
+  border-color: rgba(255, 179, 71, 0.35);
+  background: rgba(255, 179, 71, 0.12);
+}
+
+.codex-message-role {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--codex-muted);
+  margin-bottom: 6px;
+}
+
+.codex-message-text {
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.codex-message-streaming .codex-message-text {
+  position: relative;
+}
+
+.codex-message-streaming .codex-message-text::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: var(--codex-accent-alt);
+  animation: codex-pulse 1.2s ease-in-out infinite;
+}
+
+.codex-input {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--codex-border);
+  background: var(--codex-panel);
+  box-shadow: var(--codex-shadow);
+}
+
+.codex-textarea {
+  width: 100%;
+  min-height: 70px;
+  resize: none;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(10, 15, 22, 0.8);
+  color: var(--codex-text);
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.codex-textarea:focus {
+  outline: none;
+  border-color: rgba(62, 217, 196, 0.5);
+  box-shadow: 0 0 0 1px rgba(62, 217, 196, 0.3);
+}
+
+.codex-input-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.codex-send {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(62, 217, 196, 0.5);
+  background: linear-gradient(135deg, rgba(62, 217, 196, 0.25), rgba(62, 217, 196, 0.05));
+  color: var(--codex-accent);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.codex-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.codex-send:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(62, 217, 196, 0.18);
+}
+
+@keyframes codex-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
