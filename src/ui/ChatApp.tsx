@@ -610,10 +610,11 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 	);
 
 	const handleOpenSettings = useCallback(() => {
-		app.commands.executeCommandById("app:open-settings");
-		const appAny = app as {
+		const appAny = app as App & {
+			commands?: { executeCommandById?: (id: string) => void };
 			setting?: { openTabById?: (id: string) => void };
 		};
+		appAny.commands?.executeCommandById?.("app:open-settings");
 		appAny.setting?.openTabById?.(dataStore.getPluginId());
 	}, [app, dataStore]);
 

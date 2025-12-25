@@ -137,7 +137,15 @@ export class DataStore {
     }
 
     if (!this.data.activeChatId || !this.findChat(this.data.activeChatId)) {
-      this.data.activeChatId = this.data.chats[0].id;
+      const fallback = this.data.chats[0];
+      if (fallback) {
+        this.data.activeChatId = fallback.id;
+      } else {
+        const chat = this.createChatMeta();
+        this.data.chats = [chat];
+        this.data.activeChatId = chat.id;
+        await this.writeChatFile(chat.id, []);
+      }
       dirty = true;
     }
 
