@@ -12,6 +12,8 @@ export const REASONING_OPTIONS = [
 export const DEFAULT_SETTINGS: CodexSettings = {
   model: "gpt-5.2",
   reasoning: "low",
+  internetAccess: false,
+  webSearch: false,
 };
 
 export function isModelOption(value: unknown): value is CodexModel {
@@ -29,7 +31,21 @@ export function normalizeSettings(
   const reasoning = isReasoningOption(raw?.reasoning)
     ? raw?.reasoning
     : DEFAULT_SETTINGS.reasoning;
-  return { model, reasoning };
+  const internetAccess =
+    typeof raw?.internetAccess === "boolean"
+      ? raw.internetAccess
+      : DEFAULT_SETTINGS.internetAccess;
+  const webSearch =
+    typeof raw?.webSearch === "boolean"
+      ? raw.webSearch
+      : DEFAULT_SETTINGS.webSearch;
+
+  return {
+    model,
+    reasoning,
+    internetAccess,
+    webSearch: internetAccess ? webSearch : false,
+  };
 }
 
 type SettingsAccess = {
@@ -81,5 +97,41 @@ export class CodexSettingsTab extends PluginSettingTab {
         await this.access.saveSettings();
       });
     });
+
+    containerEl.createEl("h3", { text: "Advanced" });
+
+    new Setting(containerEl)
+      .setName("Internet access")
+      .setDesc(
+        "Enables network access for Codex. This may send data to external services."
+      )
+      .addToggle((toggle) => {
+        toggle.setValue(settings.internetAccess);
+        toggle.onChange(async (value) => {
+          const next = normalizeSettings({
+            ...this.access.getSettings(),
+            internetAccess: value,
+          });
+          this.access.updateSettings(next);
+          await this.access.saveSettings();
+          this.display();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Web search requests")
+      .setDesc("Allow Codex to request web searches. Requires Internet access.")
+      .addToggle((toggle) => {
+        toggle.setValue(settings.webSearch);
+        toggle.setDisabled(!settings.internetAccess);
+        toggle.onChange(async (value) => {
+          const next = normalizeSettings({
+            ...this.access.getSettings(),
+            webSearch: value,
+          });
+          this.access.updateSettings(next);
+          await this.access.saveSettings();
+        });
+      });
   }
 }

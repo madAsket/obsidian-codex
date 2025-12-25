@@ -24,6 +24,8 @@ export type CodexReasoning =
 export type CodexSettings = {
   model: CodexModel;
   reasoning: CodexReasoning;
+  internetAccess: boolean;
+  webSearch: boolean;
 };
 
 export type ChatContextScope = "vault" | "current-note";

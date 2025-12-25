@@ -58,10 +58,14 @@ export class CodexService {
       ...DEFAULT_THREAD_OPTIONS,
       workingDirectory: vaultPath ?? undefined,
     };
+    const networkAccessEnabled = settings.internetAccess;
+    const webSearchEnabled = settings.internetAccess && settings.webSearch;
     this.threadOptions = {
       ...this.baseThreadOptions,
       model: settings.model,
       modelReasoningEffort: settings.reasoning,
+      networkAccessEnabled,
+      webSearchEnabled,
     };
   }
 
@@ -70,10 +74,15 @@ export class CodexService {
   }
 
   updateThreadSettings(settings: CodexSettings): void {
+    const networkAccessEnabled = settings.internetAccess;
+    const webSearchEnabled = settings.internetAccess && settings.webSearch;
+
     this.threadOptions = {
       ...this.baseThreadOptions,
       model: settings.model,
       modelReasoningEffort: settings.reasoning,
+      networkAccessEnabled,
+      webSearchEnabled,
     };
     this.thread = null;
   }

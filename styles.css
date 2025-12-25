@@ -101,6 +101,29 @@
   border-color: rgba(148, 163, 184, 0.5);
 }
 
+.codex-chat-settings {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  color: var(--codex-muted);
+  border: none;
+  border-radius: 6px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.codex-chat-settings svg {
+  width: 16px;
+  height: 16px;
+}
+
+.codex-chat-settings:hover {
+  color: var(--codex-text);
+}
+
 .codex-title-wrap {
   display: flex;
   align-items: center;

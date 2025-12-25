@@ -152,6 +152,10 @@ export class DataStore {
     return this.data;
   }
 
+  getPluginId(): string {
+    return this.plugin.manifest.id;
+  }
+
   getChats(): ChatMeta[] {
     return [...this.data.chats];
   }
