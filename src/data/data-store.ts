@@ -1,6 +1,7 @@
 import type { Plugin } from "obsidian";
 import { MAX_MESSAGES } from "../constants";
-import type { ChatState, Message, PluginData } from "../types";
+import type { ChatState, CodexSettings, Message, PluginData } from "../types";
+import { DEFAULT_SETTINGS, normalizeSettings } from "../settings";
 
 const EMPTY_CHAT: ChatState = {
   threadId: null,
@@ -8,13 +9,16 @@ const EMPTY_CHAT: ChatState = {
   updatedAt: Date.now(),
 };
 
+const EMPTY_SETTINGS: CodexSettings = { ...DEFAULT_SETTINGS };
+
 function normalizeData(raw: unknown, vaultName: string): PluginData {
   if (!raw || typeof raw !== "object") {
-    return { vaultName, chat: { ...EMPTY_CHAT } };
+    return { vaultName, chat: { ...EMPTY_CHAT }, settings: { ...EMPTY_SETTINGS } };
   }
 
   const record = raw as Partial<PluginData>;
   const chat = record.chat ?? EMPTY_CHAT;
+  const settings = normalizeSettings(record.settings ?? null);
 
   return {
     vaultName,
@@ -23,6 +27,7 @@ function normalizeData(raw: unknown, vaultName: string): PluginData {
       messages: Array.isArray(chat.messages) ? chat.messages : [],
       updatedAt: typeof chat.updatedAt === "number" ? chat.updatedAt : Date.now(),
     },
+    settings,
   };
 }
 
@@ -36,10 +41,15 @@ function trimMessages(messages: Message[]): Message[] {
 export class DataStore {
   private plugin: Plugin;
   private data: PluginData;
+  private settingsListeners = new Set<(settings: CodexSettings) => void>();
 
   constructor(plugin: Plugin) {
     this.plugin = plugin;
-    this.data = { vaultName: "", chat: { ...EMPTY_CHAT } };
+    this.data = {
+      vaultName: "",
+      chat: { ...EMPTY_CHAT },
+      settings: { ...EMPTY_SETTINGS },
+    };
   }
 
   async load(vaultName: string): Promise<void> {
@@ -53,6 +63,20 @@ export class DataStore {
 
   getChat(): ChatState {
     return this.data.chat;
+  }
+
+  getSettings(): CodexSettings {
+    return this.data.settings;
+  }
+
+  setSettings(settings: CodexSettings): void {
+    this.data.settings = settings;
+    this.notifySettings();
+  }
+
+  updateSettings(partial: Partial<CodexSettings>): void {
+    const next = normalizeSettings({ ...this.data.settings, ...partial });
+    this.setSettings(next);
   }
 
   setMessages(messages: Message[]): void {
@@ -77,5 +101,20 @@ export class DataStore {
 
   async save(): Promise<void> {
     await this.plugin.saveData(this.data);
+  }
+
+  onSettingsChange(
+    listener: (settings: CodexSettings) => void
+  ): () => void {
+    this.settingsListeners.add(listener);
+    return () => {
+      this.settingsListeners.delete(listener);
+    };
+  }
+
+  private notifySettings(): void {
+    for (const listener of this.settingsListeners) {
+      listener(this.data.settings);
+    }
   }
 }

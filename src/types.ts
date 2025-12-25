@@ -20,30 +20,40 @@ export type ChatState = {
   updatedAt: number;
 };
 
+export type CodexModel = "gpt-5.2-codex" | "gpt-5.2";
+export type CodexReasoning =
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh";
+
+export type CodexSettings = {
+  model: CodexModel;
+  reasoning: CodexReasoning;
+};
+
 export type PluginData = {
   vaultName: string;
   chat: ChatState;
+  settings: CodexSettings;
 };
 
-export type NoteContext = {
+export type NoteReference = {
   name: string;
   path: string;
-  length: number;
-  content: string;
 };
 
 export type NoteContextErrorCode =
   | "no-active-note"
-  | "unsupported-note"
-  | "read-error";
+  | "unsupported-note";
 
 export type NoteContextError = {
   code: NoteContextErrorCode;
   message: string;
 };
 
-export type NoteContextResult =
-  | { ok: true; note: NoteContext }
+export type NoteReferenceResult =
+  | { ok: true; note: NoteReference }
   | { ok: false; error: NoteContextError };
 
 export type AuthStatus = "unknown" | "logged-in" | "not-logged-in";

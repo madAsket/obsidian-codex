@@ -1,512 +1,744 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { App } from "obsidian";
 import type { ThreadEvent } from "@openai/codex-sdk";
-import { MAX_MESSAGES, NOTE_CHAR_LIMIT } from "../constants";
-import type { AuthStatus, Message, StatusLabel } from "../types";
+import { MAX_MESSAGES } from "../constants";
+import type {
+	AuthStatus,
+	CodexModel,
+	CodexReasoning,
+	CodexSettings,
+	Message,
+	NoteReference,
+} from "../types";
 import { DataStore } from "../data/data-store";
 import { createId } from "../utils/ids";
-import { readActiveNote } from "../services/note-context";
+import { getActiveNoteReference } from "../services/note-context";
 import { CodexService } from "../services/codex-service";
 import { buildPrompt } from "../utils/prompt";
+import { MODEL_OPTIONS, REASONING_OPTIONS } from "../settings";
 
-const STATUS_LABELS: Record<StatusLabel, string> = {
-  ready: "Ready",
-  busy: "Busy",
-  "needs-login": "Needs login",
-  error: "Error",
-};
+const INSTALL_URL = "https://developers.openai.com/codex/cli/";
 
-const AUTH_LABELS: Record<AuthStatus, string> = {
-  unknown: "Not checked",
-  "logged-in": "Logged in",
-  "not-logged-in": "Not logged in",
-};
+const SendIcon = (): JSX.Element => (
+	<svg viewBox="0 0 24 24" aria-hidden="true">
+		<path
+			d="M4 12L20 4l-4 16-4.2-6.2L4 12z"
+			fill="currentColor"
+		/>
+	</svg>
+);
+
+const StopIcon = (): JSX.Element => (
+	<svg viewBox="0 0 24 24" aria-hidden="true">
+		<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
+	</svg>
+);
 
 type ChatAppProps = {
-  app: App;
-  dataStore: DataStore;
+	app: App;
+	dataStore: DataStore;
 };
 
 type ErrorKind = "auth" | "not-installed" | "unexpected";
 
 type ClassifiedError = {
-  kind: ErrorKind;
-  message: string;
+	kind: ErrorKind;
+	message: string;
 };
 
 function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
+	if (error instanceof Error) {
+		return error.message;
+	}
+	return String(error);
 }
 
 function classifyCodexError(error: unknown): ClassifiedError {
-  const message = getErrorMessage(error);
-  const normalized = message.toLowerCase();
+	const message = getErrorMessage(error);
+	const normalized = message.toLowerCase();
 
-  if (
-    normalized.includes("login") ||
-    normalized.includes("not logged in") ||
-    normalized.includes("authentication") ||
-    normalized.includes("api key") ||
-    normalized.includes("auth")
-  ) {
-    return { kind: "auth", message };
-  }
+	if (
+		normalized.includes("login") ||
+		normalized.includes("not logged in") ||
+		normalized.includes("authentication") ||
+		normalized.includes("api key") ||
+		normalized.includes("auth")
+	) {
+		return { kind: "auth", message };
+	}
 
-  if (
-    normalized.includes("codex") &&
-    (normalized.includes("not found") ||
-      normalized.includes("enoent") ||
-      normalized.includes("spawn") ||
-      normalized.includes("executable"))
-  ) {
-    return { kind: "not-installed", message };
-  }
+	if (
+		normalized.includes("codex") &&
+		(normalized.includes("not found") ||
+			normalized.includes("enoent") ||
+			normalized.includes("spawn") ||
+			normalized.includes("executable"))
+	) {
+		return { kind: "not-installed", message };
+	}
 
-  return { kind: "unexpected", message };
+	return { kind: "unexpected", message };
 }
 
 function isAbortError(error: unknown): boolean {
-  if (error instanceof DOMException) {
-    return error.name === "AbortError";
-  }
-  if (error instanceof Error) {
-    return error.name === "AbortError";
-  }
-  return false;
-}
-
-function getStatusLabel(
-  busy: boolean,
-  authStatus: AuthStatus,
-  errorMessage: string | null,
-  codexInstalled: boolean
-): StatusLabel {
-  if (busy) {
-    return "busy";
-  }
-  if (!codexInstalled || errorMessage) {
-    return "error";
-  }
-  if (authStatus === "not-logged-in") {
-    return "needs-login";
-  }
-  return "ready";
+	if (error instanceof DOMException) {
+		return error.name === "AbortError";
+	}
+	if (error instanceof Error) {
+		return error.name === "AbortError";
+	}
+	return false;
 }
 
 export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
-  const initialChat = dataStore.getChat();
-  const [messages, setMessages] = useState<Message[]>(
-    initialChat.messages ?? []
-  );
-  const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [authChecking, setAuthChecking] = useState(false);
-  const [authStatus, setAuthStatus] = useState<AuthStatus>("unknown");
-  const [codexInstalled, setCodexInstalled] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
-    null
-  );
+	const initialChat = dataStore.getChat();
+	const [messages, setMessages] = useState<Message[]>(
+		initialChat.messages ?? []
+	);
+	const [settings, setSettings] = useState<CodexSettings>(
+		dataStore.getSettings()
+	);
+	const [contextScope, setContextScope] = useState<
+		"vault" | "current-note"
+	>("vault");
+	const [input, setInput] = useState("");
+	const [busy, setBusy] = useState(false);
+	const [authChecking, setAuthChecking] = useState(false);
+	const [authStatus, setAuthStatus] = useState<AuthStatus>("unknown");
+	const [codexInstalled, setCodexInstalled] = useState(true);
+	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
+		null
+	);
 
-  const transcriptRef = useRef<HTMLDivElement | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const messagesRef = useRef<Message[]>(messages);
+	const transcriptRef = useRef<HTMLDivElement | null>(null);
+	const abortRef = useRef<AbortController | null>(null);
+	const messagesRef = useRef<Message[]>(messages);
+	const [usage, setUsage] = useState({
+		inputTokens: 0,
+		cachedInputTokens: 0,
+		outputTokens: 0,
+	});
+	const usageRef = useRef({
+		inputTokens: 0,
+		cachedInputTokens: 0,
+		outputTokens: 0,
+	});
+	const [serviceToken, setServiceToken] = useState(0);
 
-  const service = useMemo(
-    () => new CodexService(app, dataStore.getChat().threadId ?? null),
-    [app, dataStore]
-  );
+	const service = useMemo(
+		() =>
+			new CodexService(
+				app,
+				dataStore.getChat().threadId ?? null,
+				settings
+			),
+		[app, dataStore, serviceToken]
+	);
 
-  useEffect(() => {
-    messagesRef.current = messages;
-  }, [messages]);
+	useEffect(() => {
+		messagesRef.current = messages;
+	}, [messages]);
 
-  useEffect(() => {
-    if (!transcriptRef.current) {
-      return;
-    }
-    transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
-  }, [messages, busy]);
+	useEffect(() => {
+		return dataStore.onSettingsChange((next) => {
+			setSettings(next);
+		});
+	}, [dataStore]);
 
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
+	useEffect(() => {
+		service.updateThreadSettings(settings);
+	}, [service, settings.model, settings.reasoning]);
 
-  useEffect(() => {
-    let active = true;
-    setAuthChecking(true);
+	useEffect(() => {
+		if (!transcriptRef.current) {
+			return;
+		}
+		transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
+	}, [messages, busy]);
 
-    service
-      .checkAuth()
-      .then(() => {
-        if (!active) {
-          return;
-        }
-        setAuthStatus("logged-in");
-        setCodexInstalled(true);
-        setErrorMessage(null);
-      })
-      .catch((error) => {
-        console.log(error);
-        if (!active) {
-          return;
-        }
-        const classified = classifyCodexError(error);
-        if (classified.kind === "auth") {
-          setAuthStatus("not-logged-in");
-          setCodexInstalled(true);
-          setErrorMessage(null);
-        } else if (classified.kind === "not-installed") {
-          setCodexInstalled(false);
-          setErrorMessage("Codex unavailable");
-        } else {
-          setErrorMessage("Unexpected error");
-        }
-      })
-      .finally(() => {
-        if (!active) {
-          return;
-        }
-        setAuthChecking(false);
-      });
+	useEffect(() => {
+		return () => {
+			abortRef.current?.abort();
+		};
+	}, []);
 
-    return () => {
-      active = false;
-    };
-  }, [service]);
+	useEffect(() => {
+		let active = true;
+		setAuthChecking(true);
 
-  const commitMessages = useCallback(
-    (updater: (prev: Message[]) => Message[], save: boolean) => {
-      const next = updater(messagesRef.current);
-      const trimmed =
-        next.length > MAX_MESSAGES
-          ? next.slice(next.length - MAX_MESSAGES)
-          : next;
-      messagesRef.current = trimmed;
-      setMessages(trimmed);
-      dataStore.setMessages(trimmed);
-      if (save) {
-        void dataStore.save();
-      }
-    },
-    [dataStore]
-  );
+		service
+			.checkAuthStatus()
+			.then((result) => {
+				if (!active) {
+					return;
+				}
+				setAuthStatus(result.authStatus);
+				setCodexInstalled(result.codexInstalled);
+				setErrorMessage(result.errorMessage);
+			})
+			.finally(() => {
+				if (!active) {
+					return;
+				}
+				setAuthChecking(false);
+			});
 
-  const handleStop = useCallback(() => {
-    if (!busy) {
-      return;
-    }
-    abortRef.current?.abort();
-  }, [busy]);
+		return () => {
+			active = false;
+		};
+	}, [service]);
 
-  const handleSend = useCallback(async () => {
-    const trimmedInput = input.trim();
-    if (!trimmedInput || busy) {
-      return;
-    }
+	const commitMessages = useCallback(
+		(updater: (prev: Message[]) => Message[], save: boolean) => {
+			const next = updater(messagesRef.current);
+			const trimmed =
+				next.length > MAX_MESSAGES
+					? next.slice(next.length - MAX_MESSAGES)
+					: next;
+			messagesRef.current = trimmed;
+			setMessages(trimmed);
+			dataStore.setMessages(trimmed);
+			if (save) {
+				void dataStore.save();
+			}
+		},
+		[dataStore]
+	);
 
-    setBusy(true);
-    setErrorMessage(null);
+	const handleStop = useCallback(() => {
+		if (!busy) {
+			return;
+		}
+		abortRef.current?.abort();
+	}, [busy]);
 
-    const userMessage: Message = {
-      id: createId("user"),
-      role: "user",
-      text: trimmedInput,
-      ts: Date.now(),
-    };
+	const handleSend = useCallback(async () => {
+		const trimmedInput = input.trim();
+		if (!trimmedInput || busy) {
+			return;
+		}
+		if (!codexInstalled || authStatus !== "logged-in" || authChecking) {
+			return;
+		}
 
-    commitMessages((prev) => [...prev, userMessage], true);
-    setInput("");
+		setBusy(true);
+		setErrorMessage(null);
 
-    const noteResult = await readActiveNote(app);
-    if (!noteResult.ok) {
-      const errorMessageText = noteResult.error.message;
-      const systemMessage: Message = {
-        id: createId("system"),
-        role: "system",
-        text: errorMessageText,
-        ts: Date.now(),
-      };
-      commitMessages((prev) => [...prev, systemMessage], true);
-      setBusy(false);
-      return;
-    }
+		const userMessage: Message = {
+			id: createId("user"),
+			role: "user",
+			text: trimmedInput,
+			ts: Date.now(),
+		};
 
-    const assistantId = createId("assistant");
-    setStreamingMessageId(assistantId);
+		commitMessages((prev) => [...prev, userMessage], true);
+		setInput("");
 
-    const assistantMessage: Message = {
-      id: assistantId,
-      role: "assistant",
-      text: "Thinking...",
-      ts: Date.now(),
-      meta: {
-        noteName: noteResult.note.name,
-        notePath: noteResult.note.path,
-        chars: noteResult.note.length,
-      },
-    };
+		const assistantId = createId("assistant");
+		setStreamingMessageId(assistantId);
 
-    commitMessages((prev) => [...prev, assistantMessage], true);
+		let noteContext: NoteReference | null = null;
+		if (contextScope === "current-note") {
+			const noteResult = getActiveNoteReference(app);
+			if (!noteResult.ok) {
+				const errorMessageText = noteResult.error.message;
+				const systemMessage: Message = {
+					id: createId("system"),
+					role: "system",
+					text: errorMessageText,
+					ts: Date.now(),
+				};
+				commitMessages((prev) => [...prev, systemMessage], true);
+				setBusy(false);
+				return;
+			}
+			noteContext = noteResult.note;
+		}
 
-    const abortController = new AbortController();
-    abortRef.current = abortController;
+		const assistantMessage: Message = {
+			id: assistantId,
+			role: "assistant",
+			text: "Thinking...",
+			ts: Date.now(),
+			meta: noteContext
+				? {
+						noteName: noteContext.name,
+						notePath: noteContext.path,
+				  }
+				: undefined,
+		};
 
-    let streamError: Error | null = null;
+		commitMessages((prev) => [...prev, assistantMessage], true);
 
-    const onEvent = (event: ThreadEvent) => {
-      if (streamError) {
-        return;
-      }
+		const abortController = new AbortController();
+		abortRef.current = abortController;
 
-      if (event.type === "turn.failed") {
-        streamError = new Error(event.error.message);
-        return;
-      }
+		let streamError: Error | null = null;
 
-      if (event.type === "error") {
-        streamError = new Error(event.message);
-        return;
-      }
+		const onEvent = (event: ThreadEvent) => {
+			if (streamError) {
+				return;
+			}
 
-      if (
-        (event.type === "item.updated" || event.type === "item.completed") &&
-        event.item.type === "agent_message"
-      ) {
-        const nextText = event.item.text || "";
-        commitMessages(
-          (prev) =>
-            prev.map((message) =>
-              message.id === assistantId
-                ? { ...message, text: nextText }
-                : message
-            ),
-          false
-        );
-      }
-    };
+			if (event.type === "thread.started") {
+				console.log("Codex: thread started", event.thread_id);
+			}
 
-    try {
-      const prompt = buildPrompt(trimmedInput, noteResult.note);
+			if (event.type === "turn.started") {
+				console.log("Codex: turn started");
+			}
 
-      await service.runStreamed(prompt, {
-        signal: abortController.signal,
-        onThreadStarted: (threadId) => {
-          dataStore.setThreadId(threadId);
-          void dataStore.save();
-        },
-        onEvent,
-      });
+			if (event.type === "turn.failed") {
+				console.error("Codex: turn failed", event.error);
+				streamError = new Error(event.error.message);
+				return;
+			}
 
-      if (streamError) {
-        throw streamError;
-      }
+			if (event.type === "turn.completed") {
+				const usage = event.usage;
+				const nextUsage = {
+					inputTokens:
+						usageRef.current.inputTokens + usage.input_tokens,
+					cachedInputTokens:
+						usageRef.current.cachedInputTokens +
+						usage.cached_input_tokens,
+					outputTokens:
+						usageRef.current.outputTokens + usage.output_tokens,
+				};
+				usageRef.current = nextUsage;
+				setUsage(nextUsage);
+				console.log("Codex: turn completed", event.usage);
+				return;
+			}
 
-      setAuthStatus("logged-in");
-      setCodexInstalled(true);
-      setErrorMessage(null);
-      void dataStore.save();
-    } catch (error) {
-      if (abortController.signal.aborted || isAbortError(error)) {
-        commitMessages(
-          (prev) =>
-            prev.map((message) =>
-              message.id === assistantId
-                ? { ...message, text: "Cancelled" }
-                : message
-            ),
-          true
-        );
-        setBusy(false);
-        setStreamingMessageId(null);
-        return;
-      }
+			if (event.type === "error") {
+				console.error("Codex: stream error", event.message);
+				streamError = new Error(event.message);
+				return;
+			}
 
-      const classified = classifyCodexError(error);
+			if (
+				(event.type === "item.started" ||
+					event.type === "item.updated" ||
+					event.type === "item.completed") &&
+				event.item.type !== "agent_message"
+			) {
+				console.log(`Codex: ${event.type}`, event.item);
+			}
 
-      if (classified.kind === "auth") {
-        setAuthStatus("not-logged-in");
-        commitMessages(
-          (prev) =>
-            prev.map((message) =>
-              message.id === assistantId
-                ? {
-                    ...message,
-                    text: "Needs login. Run codex login in terminal.",
-                  }
-                : message
-            ),
-          true
-        );
-        setErrorMessage(null);
-      } else if (classified.kind === "not-installed") {
-        setCodexInstalled(false);
-        setErrorMessage("Codex unavailable");
-        commitMessages(
-          (prev) =>
-            prev.map((message) =>
-              message.id === assistantId
-                ? { ...message, text: "Codex unavailable" }
-                : message
-            ),
-          true
-        );
-      } else {
-        setErrorMessage("Unexpected error");
-        commitMessages(
-          (prev) =>
-            prev.map((message) =>
-              message.id === assistantId
-                ? { ...message, text: "Unexpected error" }
-                : message
-            ),
-          true
-        );
-      }
-    } finally {
-      setBusy(false);
-      setStreamingMessageId(null);
-      abortRef.current = null;
-    }
-  }, [app, busy, commitMessages, dataStore, input, service]);
+			if (
+				(event.type === "item.updated" ||
+					event.type === "item.completed") &&
+				event.item.type === "agent_message"
+			) {
+				const nextText = event.item.text || "";
+				commitMessages(
+					(prev) =>
+						prev.map((message) =>
+							message.id === assistantId
+								? { ...message, text: nextText }
+								: message
+						),
+					false
+				);
+			}
+		};
 
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (event.key !== "Enter") {
-        return;
-      }
+		try {
+			const prompt =
+				contextScope === "current-note" && noteContext
+					? buildPrompt(trimmedInput, "current-note", noteContext)
+					: buildPrompt(trimmedInput, "vault");
 
-      if (event.shiftKey) {
-        return;
-      }
+			await service.runStreamed(prompt, {
+				signal: abortController.signal,
+				onThreadStarted: (threadId) => {
+					dataStore.setThreadId(threadId);
+					void dataStore.save();
+				},
+				onEvent,
+			});
 
-      event.preventDefault();
-      void handleSend();
-    },
-    [handleSend]
-  );
+			if (streamError) {
+				throw streamError;
+			}
 
-  const statusLabel = getStatusLabel(
-    busy,
-    authStatus,
-    errorMessage,
-    codexInstalled
-  );
+			setAuthStatus("logged-in");
+			setCodexInstalled(true);
+			setErrorMessage(null);
+			void dataStore.save();
+		} catch (error) {
+			console.error("Codex: request failed", error);
+			if (abortController.signal.aborted || isAbortError(error)) {
+				commitMessages(
+					(prev) =>
+						prev.map((message) =>
+							message.id === assistantId
+								? { ...message, text: "Cancelled" }
+								: message
+						),
+					true
+				);
+				setBusy(false);
+				setStreamingMessageId(null);
+				return;
+			}
 
-  const statusText = STATUS_LABELS[statusLabel];
-  const authText = authChecking ? "Checking..." : AUTH_LABELS[authStatus];
-  const vaultName = dataStore.getData().vaultName || app.vault.getName();
-  const noteLimitText = `${NOTE_CHAR_LIMIT.toLocaleString("en-US")} chars`;
+			const classified = classifyCodexError(error);
+			console.error("Codex: classified error", classified);
 
-  return (
-    <div className="codex-shell">
-      <div className="codex-header">
-        <div>
-          <div className="codex-title">Codex</div>
-          <div className={`codex-status codex-status-${statusLabel}`}>
-            <span className="codex-status-dot" aria-hidden="true" />
-            {statusText}
-          </div>
-        </div>
-      </div>
+			if (classified.kind === "auth") {
+				setAuthStatus("not-logged-in");
+				commitMessages(
+					(prev) =>
+						prev.map((message) =>
+							message.id === assistantId
+								? {
+										...message,
+										text: "Needs login. Run codex login in terminal.",
+								  }
+								: message
+						),
+					true
+				);
+				setErrorMessage(null);
+			} else if (classified.kind === "not-installed") {
+				setCodexInstalled(false);
+				setErrorMessage(null);
+				commitMessages(
+					(prev) =>
+						prev.map((message) =>
+							message.id === assistantId
+								? { ...message, text: "Codex unavailable" }
+								: message
+						),
+					true
+				);
+			} else {
+				setErrorMessage(null);
+				commitMessages(
+					(prev) =>
+						prev.map((message) =>
+							message.id === assistantId
+								? { ...message, text: "Unexpected error" }
+								: message
+						),
+					true
+				);
+			}
+		} finally {
+			setBusy(false);
+			setStreamingMessageId(null);
+			abortRef.current = null;
+		}
+	}, [
+		app,
+		authChecking,
+		authStatus,
+		busy,
+		codexInstalled,
+		commitMessages,
+		contextScope,
+		dataStore,
+		input,
+		service,
+	]);
 
-      <div className="codex-status-block">
-        <div className="codex-status-row">
-          <span className="codex-status-label">Codex installed</span>
-          <span className="codex-status-value">
-            {codexInstalled ? "Yes" : "No"}
-          </span>
-        </div>
-        <div className="codex-status-row">
-          <span className="codex-status-label">Auth</span>
-          <span className="codex-status-value">{authText}</span>
-        </div>
-        <div className="codex-status-row">
-          <span className="codex-status-label">Vault</span>
-          <span className="codex-status-value">{vaultName}</span>
-        </div>
-        <div className="codex-status-row">
-          <span className="codex-status-label">Safety</span>
-          <span className="codex-status-value">Read-only</span>
-        </div>
-        <div className="codex-status-row">
-          <span className="codex-status-label">Note limit</span>
-          <span className="codex-status-value">{noteLimitText}</span>
-        </div>
-        {authStatus === "not-logged-in" ? (
-          <div className="codex-status-hint">
-            Run <strong>codex login</strong> in terminal.
-          </div>
-        ) : null}
-        {errorMessage ? (
-          <div className="codex-status-alert">{errorMessage}</div>
-        ) : null}
-      </div>
+	const handleKeyDown = useCallback(
+		(event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+			if (event.key !== "Enter") {
+				return;
+			}
 
-      <div className="codex-transcript" ref={transcriptRef}>
-        {messages.length === 0 ? (
-          <div className="codex-empty">
-            Ask a question about the active note.
-          </div>
-        ) : (
-          messages.map((message) => {
-            const roleLabel =
-              message.role === "user"
-                ? "You"
-                : message.role === "assistant"
-                ? "Codex"
-                : "System";
-            const isStreaming = message.id === streamingMessageId;
+			if (event.shiftKey) {
+				return;
+			}
 
-            return (
-              <div
-                key={message.id}
-                className={`codex-message codex-message-${message.role} ${
-                  isStreaming ? "codex-message-streaming" : ""
-                }`}
-              >
-                <div className="codex-message-role">{roleLabel}</div>
-                <div className="codex-message-text">{message.text}</div>
-              </div>
-            );
-          })
-        )}
-      </div>
+			event.preventDefault();
+			void handleSend();
+		},
+		[handleSend]
+	);
 
-      <div className="codex-input">
-        <textarea
-          className="codex-textarea"
-          placeholder="Ask about the active note..."
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={busy}
-          rows={3}
-        />
-        <div className="codex-input-actions">
-          <button
-            type="button"
-            className="codex-stop"
-            onClick={handleStop}
-            disabled={!busy}
-          >
-            Stop
-          </button>
-          <button
-            type="button"
-            className="codex-send"
-            onClick={() => void handleSend()}
-            disabled={busy || input.trim().length === 0}
-          >
-            Send
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+	const indicatorState =
+		busy || (codexInstalled && authStatus === "logged-in")
+			? "ok"
+			: "error";
+	const shouldShowChat = codexInstalled && authStatus === "logged-in";
+	const showAuthNotice = codexInstalled && authStatus === "not-logged-in";
+	const showInstallNotice = !codexInstalled;
+	const showChecking =
+		authChecking && !busy && !showInstallNotice && !showAuthNotice;
+	const showError =
+		!showInstallNotice && !showAuthNotice && !showChecking && !!errorMessage;
+	const showChat = shouldShowChat && !showChecking && !showError;
+
+	const handleRetry = useCallback(() => {
+		if (busy) {
+			return;
+		}
+		setAuthStatus("unknown");
+		setCodexInstalled(true);
+		setErrorMessage(null);
+		setAuthChecking(true);
+		setServiceToken((token) => token + 1);
+	}, [busy]);
+
+	const retryDisabled = busy || authChecking;
+	const actionDisabled =
+		busy ? false : input.trim().length === 0 || authChecking;
+	const actionLabel = busy ? "Stop" : "Send";
+	const totalTokens = usage.inputTokens + usage.outputTokens;
+	const tokenSummary = `Tokens: ${totalTokens} | in ${usage.inputTokens} | out ${usage.outputTokens} | cache ${usage.cachedInputTokens}`;
+	const inputPlaceholder =
+		contextScope === "vault"
+			? "Ask about your vault..."
+			: "Ask about the current note...";
+
+	const handleContextChange = useCallback(
+		(event: React.ChangeEvent<HTMLSelectElement>) => {
+			setContextScope(event.target.value as "vault" | "current-note");
+		},
+		[]
+	);
+
+	const updateSettings = useCallback(
+		(patch: Partial<CodexSettings>) => {
+			dataStore.updateSettings(patch);
+			void dataStore.save();
+		},
+		[dataStore]
+	);
+
+	const handleModelChange = useCallback(
+		(event: React.ChangeEvent<HTMLSelectElement>) => {
+			updateSettings({ model: event.target.value as CodexModel });
+		},
+		[updateSettings]
+	);
+
+	const handleReasoningChange = useCallback(
+		(event: React.ChangeEvent<HTMLSelectElement>) => {
+			updateSettings({ reasoning: event.target.value as CodexReasoning });
+		},
+		[updateSettings]
+	);
+
+	const handleStatusClick = useCallback(() => {
+		const usage = usageRef.current;
+		const totalTokens = usage.inputTokens + usage.outputTokens;
+		console.log("Codex /status", {
+			inputTokens: usage.inputTokens,
+			cachedInputTokens: usage.cachedInputTokens,
+			outputTokens: usage.outputTokens,
+			totalTokens,
+		});
+	}, []);
+
+	return (
+		<div className="codex-shell">
+			<div className="codex-header">
+				<div className="codex-title-wrap">
+					<span
+						className={`codex-title-dot codex-title-dot-${indicatorState}`}
+						aria-hidden="true"
+					/>
+					<div className="codex-title">Codex</div>
+				</div>
+				<div className="codex-header-meta">{tokenSummary}</div>
+			</div>
+
+			{showInstallNotice ? (
+				<div className="codex-empty-state">
+					<div className="codex-empty-title">Codex is not installed</div>
+					<div className="codex-empty-text">
+						Install it with <code>npm install -g @openai/codex</code>.
+					</div>
+					<div className="codex-empty-links">
+						<a
+							className="codex-link"
+							href={INSTALL_URL}
+							target="_blank"
+							rel="noreferrer"
+						>
+							Learn more
+						</a>
+					</div>
+					<button
+						type="button"
+						className="codex-retry"
+						onClick={handleRetry}
+						disabled={retryDisabled}
+					>
+						Retry
+					</button>
+				</div>
+			) : null}
+
+			{showAuthNotice ? (
+				<div className="codex-empty-state">
+					<div className="codex-empty-title">Login to Codex CLI</div>
+					<div className="codex-empty-text">
+						Run <code>codex</code> in your terminal to sign in.
+					</div>
+					<button
+						type="button"
+						className="codex-retry"
+						onClick={handleRetry}
+						disabled={retryDisabled}
+					>
+						Retry
+					</button>
+				</div>
+			) : null}
+
+			{showChecking ? (
+				<div className="codex-empty-state">
+					<div className="codex-empty-title">Checking Codex status</div>
+					<div className="codex-empty-text">
+						Hold on while we verify your setup.
+					</div>
+				</div>
+			) : null}
+
+			{showError ? (
+				<div className="codex-empty-state">
+					<div className="codex-empty-title">Unexpected error</div>
+					<div className="codex-empty-text">
+						{errorMessage ?? "Something went wrong."}
+					</div>
+					<button
+						type="button"
+						className="codex-retry"
+						onClick={handleRetry}
+						disabled={retryDisabled}
+					>
+						Retry
+					</button>
+				</div>
+			) : null}
+
+			{showChat ? (
+				<>
+					<div className="codex-transcript" ref={transcriptRef}>
+						{messages.length === 0 ? (
+							<div className="codex-empty">
+								{contextScope === "vault"
+									? "Ask a question about your vault."
+									: "Ask a question about the active note."}
+							</div>
+						) : (
+							messages.map((message) => {
+								const isStreaming =
+									message.id === streamingMessageId;
+
+								return (
+									<div
+										key={message.id}
+										className={`codex-message codex-message-${
+											message.role
+										} ${
+											isStreaming
+												? "codex-message-streaming"
+												: ""
+										}`}
+									>
+										<div className="codex-message-text">
+											{message.text}
+										</div>
+									</div>
+								);
+							})
+						)}
+					</div>
+
+					<div className="codex-input">
+						<textarea
+							className="codex-textarea"
+							placeholder={inputPlaceholder}
+							value={input}
+							onChange={(event) => setInput(event.target.value)}
+							onKeyDown={handleKeyDown}
+							disabled={busy}
+							rows={3}
+						/>
+						<div className="codex-input-actions">
+							<div className="codex-toolbox-field">
+								<span className="codex-toolbox-label">Context</span>
+								<select
+									className="codex-toolbox-select"
+									value={contextScope}
+									onChange={handleContextChange}
+									disabled={busy}
+									aria-label="Context"
+								>
+									<option value="vault">Vault</option>
+									<option value="current-note">Current note</option>
+								</select>
+							</div>
+							<button
+								type="button"
+								className={`codex-action ${
+									busy ? "codex-action-stop" : ""
+								}`}
+								onClick={() =>
+									busy ? handleStop() : void handleSend()
+								}
+								disabled={actionDisabled}
+								aria-label={actionLabel}
+							>
+								{busy ? <StopIcon /> : <SendIcon />}
+							</button>
+						</div>
+					</div>
+					<div className="codex-toolbox">
+						<div className="codex-toolbox-field">
+							<span className="codex-toolbox-label">Model</span>
+							<select
+								className="codex-toolbox-select"
+								value={settings.model}
+								onChange={handleModelChange}
+								aria-label="Model"
+							>
+								{MODEL_OPTIONS.map((model) => (
+									<option key={model} value={model}>
+										{model}
+									</option>
+								))}
+							</select>
+						</div>
+						<div className="codex-toolbox-field">
+							<span className="codex-toolbox-label">Reasoning</span>
+							<select
+								className="codex-toolbox-select"
+								value={settings.reasoning}
+								onChange={handleReasoningChange}
+								aria-label="Reasoning"
+							>
+								{REASONING_OPTIONS.map((option) => (
+									<option key={option} value={option}>
+										{option}
+									</option>
+								))}
+							</select>
+						</div>
+						{/* <button
+							type="button"
+							className="codex-toolbox-button"
+							onClick={handleStatusClick}
+						>
+							/status
+						</button> */}
+					</div>
+				</>
+			) : null}
+		</div>
+	);
 }

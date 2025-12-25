@@ -2,7 +2,7 @@
 
 ## Project overview
 
-- Target: Obsidian Community Plugin (TypeScript → bundled JavaScript).
+- Target: Obsidian Community Plugin (React & TypeScript → bundled JavaScript).
 - Entry point: `main.ts` compiled to `main.js` and loaded by Obsidian.
 - Required release artifacts: `main.js`, `manifest.json`, and optional `styles.css`.
 
@@ -234,6 +234,10 @@ this.registerDomEvent(window, "resize", () => { /* ... */ });
 this.registerInterval(window.setInterval(() => { /* ... */ }, 1000));
 ```
 
+### Record agreements and tasks
+For every feature add agreements and tasks to MD file in ./docs/features/<feature>.MD
+If user provided MD file during the conversation add everything to this file, if not - create new feature file.
+
 ## Troubleshooting
 
 - Plugin doesn't load after build: ensure `main.js` and `manifest.json` are at the top level of the plugin folder under `<Vault>/.obsidian/plugins/<plugin-id>/`. 
@@ -249,3 +253,5 @@ this.registerInterval(window.setInterval(() => { /* ... */ }, 1000));
 - Developer policies: https://docs.obsidian.md/Developer+policies
 - Plugin guidelines: https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines
 - Style guide: https://help.obsidian.md/style-guide
+- Codex CLI docs repo: https://github.com/openai/codex/tree/main
+- Codex CLI docs website: https://developers.openai.com/codex/cli

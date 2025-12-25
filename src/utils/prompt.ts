@@ -1,19 +1,26 @@
-import { SYSTEM_PROMPT } from "../constants";
-import type { NoteContext } from "../types";
+import { SYSTEM_PROMPT_NOTE, SYSTEM_PROMPT_VAULT } from "../constants";
+import type { NoteReference } from "../types";
 
-export function buildPrompt(userText: string, note: NoteContext): string {
+export function buildPrompt(
+  userText: string,
+  scope: "current-note" | "vault",
+  note?: NoteReference
+): string {
+  if (scope === "vault") {
+    return [SYSTEM_PROMPT_VAULT, "", "User request:", userText].join("\n");
+  }
+
+  if (!note) {
+    throw new Error("Note context required for current note prompt");
+  }
+
   return [
-    SYSTEM_PROMPT,
+    SYSTEM_PROMPT_NOTE,
     "",
-    "User question:",
+    "Edit this note:",
+    `@${note.path}`,
+    "",
+    "User request:",
     userText,
-    "",
-    "Note metadata:",
-    `Name: ${note.name}`,
-    `Path: ${note.path}`,
-    `Length: ${note.length} characters`,
-    "",
-    "Note content:",
-    note.content,
   ].join("\n");
 }
