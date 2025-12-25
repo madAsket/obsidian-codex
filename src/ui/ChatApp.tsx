@@ -500,6 +500,19 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 		!showInstallNotice && !showAuthNotice && !showChecking && !!errorMessage;
 	const showChat = shouldShowChat && !showChecking && !showError;
 
+	useEffect(() => {
+		if (!showChat) {
+			return;
+		}
+		const frame = requestAnimationFrame(() => {
+			if (!transcriptRef.current) {
+				return;
+			}
+			transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [showChat, activeChatId]);
+
 	const handleRetry = useCallback(() => {
 		if (busy) {
 			return;
