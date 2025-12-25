@@ -97,16 +97,18 @@ function isAbortError(error: unknown): boolean {
 }
 
 export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
-	const initialChat = dataStore.getChat();
+	const initialChat = dataStore.getActiveChat();
+	const [chatList, setChatList] = useState(dataStore.getChats());
+	const [activeChatId, setActiveChatId] = useState(initialChat.id);
 	const [messages, setMessages] = useState<Message[]>(
-		initialChat.messages ?? []
+		dataStore.getMessages()
 	);
 	const [settings, setSettings] = useState<CodexSettings>(
 		dataStore.getSettings()
 	);
 	const [contextScope, setContextScope] = useState<
 		"vault" | "current-note"
-	>("vault");
+	>(initialChat.contextScope);
 	const [input, setInput] = useState("");
 	const [busy, setBusy] = useState(false);
 	const [authChecking, setAuthChecking] = useState(false);
@@ -120,26 +122,18 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 	const transcriptRef = useRef<HTMLDivElement | null>(null);
 	const abortRef = useRef<AbortController | null>(null);
 	const messagesRef = useRef<Message[]>(messages);
-	const [usage, setUsage] = useState({
-		inputTokens: 0,
-		cachedInputTokens: 0,
-		outputTokens: 0,
-	});
-	const usageRef = useRef({
-		inputTokens: 0,
-		cachedInputTokens: 0,
-		outputTokens: 0,
-	});
+	const [usage, setUsage] = useState(initialChat.usage);
+	const usageRef = useRef(initialChat.usage);
 	const [serviceToken, setServiceToken] = useState(0);
 
 	const service = useMemo(
 		() =>
 			new CodexService(
 				app,
-				dataStore.getChat().threadId ?? null,
+				dataStore.getActiveChat().threadId ?? null,
 				settings
 			),
-		[app, dataStore, serviceToken]
+		[app, dataStore, serviceToken, activeChatId]
 	);
 
 	useEffect(() => {
@@ -314,6 +308,7 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 				};
 				usageRef.current = nextUsage;
 				setUsage(nextUsage);
+				dataStore.updateChatUsage(nextUsage);
 				console.log("Codex: turn completed", event.usage);
 				return;
 			}
@@ -504,15 +499,60 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 
 	const handleContextChange = useCallback(
 		(event: React.ChangeEvent<HTMLSelectElement>) => {
-			setContextScope(event.target.value as "vault" | "current-note");
+			const next = event.target.value as "vault" | "current-note";
+			setContextScope(next);
+			dataStore.updateChatContext(next);
+			void dataStore.saveMeta();
 		},
-		[]
+		[dataStore]
 	);
+
+	const handleChatChange = useCallback(
+		async (event: React.ChangeEvent<HTMLSelectElement>) => {
+			if (busy) {
+				return;
+			}
+			const nextChatId = event.target.value;
+			if (nextChatId === activeChatId) {
+				return;
+			}
+			const result = await dataStore.switchChat(nextChatId);
+			if (!result) {
+				return;
+			}
+			setActiveChatId(result.chat.id);
+			setMessages(result.messages);
+			messagesRef.current = result.messages;
+			setContextScope(result.chat.contextScope);
+			setUsage(result.chat.usage);
+			usageRef.current = result.chat.usage;
+			setStreamingMessageId(null);
+			setInput("");
+			setChatList(dataStore.getChats());
+		},
+		[activeChatId, busy, dataStore]
+	);
+
+	const handleNewChat = useCallback(async () => {
+		if (busy) {
+			return;
+		}
+		const result = await dataStore.createChat();
+		setActiveChatId(result.chat.id);
+		setMessages(result.messages);
+		messagesRef.current = result.messages;
+		setContextScope(result.chat.contextScope);
+		setUsage(result.chat.usage);
+		usageRef.current = result.chat.usage;
+		setStreamingMessageId(null);
+		setInput("");
+		setChatList(dataStore.getChats());
+	}, [busy, dataStore]);
 
 	const updateSettings = useCallback(
 		(patch: Partial<CodexSettings>) => {
 			dataStore.updateSettings(patch);
-			void dataStore.save();
+			void dataStore.saveMeta();
 		},
 		[dataStore]
 	);
@@ -552,7 +592,32 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 					/>
 					<div className="codex-title">Codex</div>
 				</div>
-				<div className="codex-header-meta">{tokenSummary}</div>
+				<div className="codex-header-right">
+					<div className="codex-chat-controls">
+						<select
+							className="codex-chat-select"
+							value={activeChatId}
+							onChange={handleChatChange}
+							disabled={busy}
+							aria-label="Chat"
+						>
+							{chatList.map((chat) => (
+								<option key={chat.id} value={chat.id}>
+									{chat.title}
+								</option>
+							))}
+						</select>
+						<button
+							type="button"
+							className="codex-chat-new"
+							onClick={handleNewChat}
+							disabled={busy}
+						>
+							New chat
+						</button>
+					</div>
+					<div className="codex-header-meta">{tokenSummary}</div>
+				</div>
 			</div>
 
 			{showInstallNotice ? (

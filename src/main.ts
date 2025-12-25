@@ -31,7 +31,7 @@ export default class CodexPlugin extends Plugin {
       new CodexSettingsTab(this.app, this, {
         getSettings: () => this.dataStore.getSettings(),
         updateSettings: (settings) => this.dataStore.setSettings(settings),
-        saveSettings: () => this.dataStore.save(),
+        saveSettings: () => this.dataStore.saveMeta(),
       })
     );
 

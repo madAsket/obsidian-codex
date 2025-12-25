@@ -14,12 +14,6 @@ export type Message = {
   meta?: MessageMeta;
 };
 
-export type ChatState = {
-  threadId: string | null;
-  messages: Message[];
-  updatedAt: number;
-};
-
 export type CodexModel = "gpt-5.2-codex" | "gpt-5.2";
 export type CodexReasoning =
   | "low"
@@ -32,9 +26,33 @@ export type CodexSettings = {
   reasoning: CodexReasoning;
 };
 
+export type ChatContextScope = "vault" | "current-note";
+
+export type ChatUsage = {
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+};
+
+export type ChatMeta = {
+  id: string;
+  title: string;
+  threadId: string | null;
+  contextScope: ChatContextScope;
+  usage: ChatUsage;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type ChatFile = {
+  messages: Message[];
+  updatedAt: number;
+};
+
 export type PluginData = {
   vaultName: string;
-  chat: ChatState;
+  activeChatId: string;
+  chats: ChatMeta[];
   settings: CodexSettings;
 };
 
