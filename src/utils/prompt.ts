@@ -17,7 +17,7 @@ export function buildPrompt(
   return [
     SYSTEM_PROMPT_NOTE,
     "",
-    "Edit this note:",
+    "Note:",
     `@${note.path}`,
     "",
     "User request:",

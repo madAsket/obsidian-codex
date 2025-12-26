@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import type { App } from "obsidian";
 import type { ThreadEvent } from "@openai/codex-sdk";
-import { CODEX_RELEASE_TAG, MAX_MESSAGES } from "../constants";
+import { MAX_MESSAGES } from "../constants";
 import type {
 	AuthStatus,
 	CodexModel,
@@ -24,39 +24,16 @@ import { downloadCodexBinary } from "../utils/codex-download";
 import { getCodexCandidates } from "../utils/codex-path";
 import { buildPrompt } from "../utils/prompt";
 import { MODEL_OPTIONS, REASONING_OPTIONS } from "../settings";
+import { ChatHeader } from "./components/ChatHeader";
+import { BootstrapPanel } from "./components/BootstrapPanel";
+import { AuthNotice } from "./components/AuthNotice";
+import { CheckingNotice } from "./components/CheckingNotice";
+import { ErrorNotice } from "./components/ErrorNotice";
+import { ChatTranscript } from "./components/ChatTranscript";
+import { ChatInput } from "./components/ChatInput";
+import { ChatToolbox } from "./components/ChatToolbox";
 
 const INSTALL_URL = "https://developers.openai.com/codex/cli/";
-
-const SendIcon = (): JSX.Element => (
-	<svg viewBox="0 0 24 24" aria-hidden="true">
-		<path d="M4 12L20 4l-4 16-4.2-6.2L4 12z" fill="currentColor" />
-	</svg>
-);
-
-const StopIcon = (): JSX.Element => (
-	<svg viewBox="0 0 24 24" aria-hidden="true">
-		<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
-	</svg>
-);
-
-const SettingsIcon = (): JSX.Element => (
-	<svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
-		<path
-			d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
-			stroke="currentColor"
-			strokeWidth="2"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		/>
-		<path
-			d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .66.39 1.26 1 1.51.27.11.56.16.85.16H21a2 2 0 0 1 0 4h-.09c-.29 0-.58.05-.85.16-.61.25-1 .85-1 1.51Z"
-			stroke="currentColor"
-			strokeWidth="2"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		/>
-	</svg>
-);
 
 type ChatAppProps = {
 	app: App;
@@ -144,7 +121,7 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 	const [loginBusy, setLoginBusy] = useState(false);
 	const [loginError, setLoginError] = useState<string | null>(null);
 
-	const transcriptRef = useRef<HTMLDivElement | null>(null);
+	const transcriptRef = useRef<HTMLDivElement>(null);
 	const abortRef = useRef<AbortController | null>(null);
 	const messagesRef = useRef<Message[]>(messages);
 	const [usage, setUsage] = useState(initialChat.usage);
@@ -541,20 +518,18 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 	const indicatorState =
 		busy || (codexInstalled && authStatus === "logged-in") ? "ok" : "error";
 	const showHeaderControls = codexInstalled && authStatus === "logged-in";
-	const showBootstrap = settings.codexPathMode === "unset";
+	const showBootstrap =
+		settings.codexPathMode === "unset" || !codexInstalled;
 	const shouldShowChat = codexInstalled && authStatus === "logged-in";
 	const showAuthNotice =
 		!showBootstrap && codexInstalled && authStatus === "not-logged-in";
-	const showInstallNotice = !showBootstrap && !codexInstalled;
 	const showChecking =
 		!showBootstrap &&
 		authChecking &&
 		!busy &&
-		!showInstallNotice &&
 		!showAuthNotice;
 	const showError =
 		!showBootstrap &&
-		!showInstallNotice &&
 		!showAuthNotice &&
 		!showChecking &&
 		!!errorMessage;
@@ -780,382 +755,85 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 		appAny.setting?.openTabById?.(dataStore.getPluginId());
 	}, [app, dataStore]);
 
-	const handleStatusClick = useCallback(() => {
-		const usage = usageRef.current;
-		const totalTokens = usage.inputTokens + usage.outputTokens;
-		console.log("Codex /status", {
-			inputTokens: usage.inputTokens,
-			cachedInputTokens: usage.cachedInputTokens,
-			outputTokens: usage.outputTokens,
-			totalTokens,
-		});
-	}, []);
-
 	return (
 		<div className="codex-shell">
-			<div className="codex-header">
-				<div className="codex-title-wrap">
-					{showHeaderControls ? (
-						<span
-							className={`codex-title-dot codex-title-dot-${indicatorState}`}
-							aria-hidden="true"
-						/>
-					) : null}
-					<div className="codex-title">Redstone</div>
-				</div>
-				{showHeaderControls ? (
-					<div className="codex-header-right">
-						<div className="codex-chat-controls">
-							<select
-								className="codex-chat-select"
-								value={activeChatId}
-								onChange={handleChatChange}
-								disabled={busy}
-								aria-label="Chat"
-							>
-								{chatList.map((chat) => (
-									<option key={chat.id} value={chat.id}>
-										{chat.title}
-									</option>
-								))}
-							</select>
-							<button
-								type="button"
-								className="codex-chat-new"
-								onClick={handleNewChat}
-								disabled={busy}
-							>
-								New chat
-							</button>
-							<button
-								type="button"
-								className="codex-chat-settings"
-								onClick={handleOpenSettings}
-								aria-label="Open settings"
-							>
-								<SettingsIcon />
-							</button>
-						</div>
-						<div className="codex-header-meta">{tokenSummary}</div>
-					</div>
-				) : null}
-			</div>
+			<ChatHeader
+				title="Redstone"
+				showIndicator={showHeaderControls}
+				indicatorState={indicatorState}
+				showControls={showHeaderControls}
+				activeChatId={activeChatId}
+				chatList={chatList}
+				busy={busy}
+				onChatChange={handleChatChange}
+				onNewChat={handleNewChat}
+				onOpenSettings={handleOpenSettings}
+				tokenSummary={tokenSummary}
+			/>
 
-			{showBootstrap ? (
-				<div className="codex-bootstrap">
-					<div className="codex-bootstrap-title">
-						Step 1. Set up Codex CLI
-					</div>
-					<div className="codex-bootstrap-section">
-						<div className="codex-bootstrap-label">
-							Option 1: Use a detected Codex CLI
-						</div>
-						{hasCandidates ? (
-							<div className="codex-bootstrap-row">
-								<select
-									className="codex-bootstrap-select"
-									value={selectedCandidate}
-									onChange={(event) =>
-										setSelectedCandidate(event.target.value)
-									}
-									disabled={bootstrapBusy}
-									aria-label="Detected Codex CLI"
-								>
-									{codexCandidates.map((candidate) => (
-										<option
-											key={candidate.path}
-											value={candidate.path}
-										>
-											{candidate.label}
-										</option>
-									))}
-								</select>
-								<button
-									type="button"
-									className="codex-bootstrap-button"
-									onClick={handleSaveCandidate}
-									disabled={
-										bootstrapBusy || !selectedCandidate
-									}
-								>
-									Save
-								</button>
-							</div>
-						) : (
-							<div className="codex-bootstrap-muted">
-								No Codex binaries detected.
-							</div>
-						)}
-					</div>
+			<BootstrapPanel
+				visible={showBootstrap}
+				candidates={codexCandidates}
+				selectedCandidate={selectedCandidate}
+				onSelectCandidate={(value) => setSelectedCandidate(value)}
+				onSaveCandidate={handleSaveCandidate}
+				onDownload={handleDownloadCodex}
+				onCheckInstall={handleCheckInstall}
+				busy={bootstrapBusy}
+				errorMessage={bootstrapError}
+				pluginRootAvailable={!!pluginRoot}
+				installUrl={INSTALL_URL}
+			/>
 
-					<div className="codex-bootstrap-section">
-						<div className="codex-bootstrap-label">
-							Option 2: Download Codex CLI
-						</div>
-						<button
-							type="button"
-							className="codex-bootstrap-button"
-							onClick={handleDownloadCodex}
-							disabled={bootstrapBusy || !pluginRoot}
-						>
-							Download
-						</button>
-					</div>
 
-					<div className="codex-bootstrap-section">
-						<div className="codex-bootstrap-label">
-							Option 3: Install manually
-						</div>
-						<div className="codex-bootstrap-text">
-							Run <br/><code><b>npm install -g @openai/codex</b></code>
-							<br/> and click Check. (<span className="codex-empty-links">
-								<a
-									className="codex-link"
-									href={INSTALL_URL}
-									target="_blank"
-									rel="noreferrer"
-								>
-									Learn more
-								</a>
-							</span>)
-					
-						</div>
-						<button
-							type="button"
-							className="codex-bootstrap-button"
-							onClick={handleCheckInstall}
-							disabled={bootstrapBusy}
-						>
-							Check
-						</button>
-					</div>
+			<AuthNotice
+				visible={showAuthNotice}
+				loginUrl={loginUrl}
+				loginBusy={loginBusy}
+				retryDisabled={retryDisabled}
+				loginError={loginError}
+				onAuthorize={handleBrowserLogin}
+				onCheck={handleRetry}
+			/>
 
-					{bootstrapError ? (
-						<div className="codex-bootstrap-error">
-							{bootstrapError}
-						</div>
-					) : null}
-				</div>
-			) : null}
+			<CheckingNotice visible={showChecking} />
 
-			{showInstallNotice ? (
-				<div className="codex-empty-state">
-					<div className="codex-empty-title">
-						Codex is not installed
-					</div>
-					<div className="codex-empty-text">
-						Install it with{" "}
-						<code>npm install -g @openai/codex</code>.
-					</div>
-					<div className="codex-empty-links">
-						<a
-							className="codex-link"
-							href={INSTALL_URL}
-							target="_blank"
-							rel="noreferrer"
-						>
-							Learn more
-						</a>
-					</div>
-					<button
-						type="button"
-						className="codex-retry"
-						onClick={handleRetry}
-						disabled={retryDisabled}
-					>
-						Retry
-					</button>
-				</div>
-			) : null}
-
-			{showAuthNotice ? (
-				<div className="codex-empty-state">
-					<div className="codex-empty-title">Login to Codex CLI</div>
-					<div className="codex-auth-actions">
-						<button
-							type="button"
-							className="codex-auth-button"
-							onClick={handleBrowserLogin}
-							disabled={loginBusy || retryDisabled}
-						>
-							Authorize in browser
-						</button>
-						{loginUrl ? (
-							<a
-								className="codex-link"
-								href={loginUrl}
-								target="_blank"
-								rel="noreferrer"
-							>
-								Open login page
-							</a>
-						) : null}
-					</div>
-					<div className="codex-empty-text">
-						Or run <code>codex</code> in your terminal to sign in and click button below.
-					</div>
-					<button
-						type="button"
-						className="codex-retry"
-						onClick={handleRetry}
-						disabled={retryDisabled}
-					>
-						Check
-					</button>
-					{loginError ? (
-						<div className="codex-empty-text codex-auth-error">
-							{loginError}
-						</div>
-					) : null}
-				</div>
-			) : null}
-
-			{showChecking ? (
-				<div className="codex-empty-state">
-					<div className="codex-empty-title">
-						Checking Codex status
-					</div>
-					<div className="codex-empty-text">
-						Hold on while we verify your setup.
-					</div>
-				</div>
-			) : null}
-
-			{showError ? (
-				<div className="codex-empty-state">
-					<div className="codex-empty-title">Unexpected error</div>
-					<div className="codex-empty-text">
-						{errorMessage ?? "Something went wrong."}
-					</div>
-					<button
-						type="button"
-						className="codex-retry"
-						onClick={handleRetry}
-						disabled={retryDisabled}
-					>
-						Retry
-					</button>
-				</div>
-			) : null}
+			<ErrorNotice
+				visible={showError}
+				errorMessage={errorMessage}
+				onRetry={handleRetry}
+				retryDisabled={retryDisabled}
+			/>
 
 			{showChat ? (
 				<>
-					<div className="codex-transcript" ref={transcriptRef}>
-						{messages.length === 0 ? (
-							<div className="codex-empty">
-								{contextScope === "vault"
-									? "Ask a question about your vault."
-									: "Ask a question about the active note."}
-							</div>
-						) : (
-							messages.map((message) => {
-								const isStreaming =
-									message.id === streamingMessageId;
-
-								return (
-									<div
-										key={message.id}
-										className={`codex-message codex-message-${
-											message.role
-										} ${
-											isStreaming
-												? "codex-message-streaming"
-												: ""
-										}`}
-									>
-										<div className="codex-message-text">
-											{message.text}
-										</div>
-									</div>
-								);
-							})
-						)}
-					</div>
-
-					<div className="codex-input">
-						<textarea
-							className="codex-textarea"
-							placeholder={inputPlaceholder}
-							value={input}
-							onChange={(event) => setInput(event.target.value)}
-							onKeyDown={handleKeyDown}
-							disabled={busy}
-							rows={3}
-						/>
-						<div className="codex-input-actions">
-							<div className="codex-toolbox-field">
-								<span className="codex-toolbox-label">
-									Context
-								</span>
-								<select
-									className="codex-toolbox-select"
-									value={contextScope}
-									onChange={handleContextChange}
-									disabled={busy}
-									aria-label="Context"
-								>
-									<option value="vault">Vault</option>
-									<option value="current-note">
-										Current note
-									</option>
-								</select>
-							</div>
-							<button
-								type="button"
-								className={`codex-action ${
-									busy ? "codex-action-stop" : ""
-								}`}
-								onClick={() =>
-									busy ? handleStop() : void handleSend()
-								}
-								disabled={actionDisabled}
-								aria-label={actionLabel}
-							>
-								{busy ? <StopIcon /> : <SendIcon />}
-							</button>
-						</div>
-					</div>
-					<div className="codex-toolbox">
-						<div className="codex-toolbox-field">
-							<span className="codex-toolbox-label">Model</span>
-							<select
-								className="codex-toolbox-select"
-								value={settings.model}
-								onChange={handleModelChange}
-								aria-label="Model"
-							>
-								{MODEL_OPTIONS.map((model) => (
-									<option key={model} value={model}>
-										{model}
-									</option>
-								))}
-							</select>
-						</div>
-						<div className="codex-toolbox-field">
-							<span className="codex-toolbox-label">
-								Reasoning
-							</span>
-							<select
-								className="codex-toolbox-select"
-								value={settings.reasoning}
-								onChange={handleReasoningChange}
-								aria-label="Reasoning"
-							>
-								{REASONING_OPTIONS.map((option) => (
-									<option key={option} value={option}>
-										{option}
-									</option>
-								))}
-							</select>
-						</div>
-						{/* <button
-							type="button"
-							className="codex-toolbox-button"
-							onClick={handleStatusClick}
-						>
-							/status
-						</button> */}
-					</div>
+					<ChatTranscript
+						ref={transcriptRef}
+						messages={messages}
+						contextScope={contextScope}
+						streamingMessageId={streamingMessageId}
+					/>
+					<ChatInput
+						input={input}
+						placeholder={inputPlaceholder}
+						busy={busy}
+						actionLabel={actionLabel}
+						actionDisabled={actionDisabled}
+						contextScope={contextScope}
+						onInputChange={(value) => setInput(value)}
+						onKeyDown={handleKeyDown}
+						onContextChange={handleContextChange}
+						onSend={() => void handleSend()}
+						onStop={handleStop}
+					/>
+					<ChatToolbox
+						model={settings.model}
+						reasoning={settings.reasoning}
+						modelOptions={MODEL_OPTIONS}
+						reasoningOptions={REASONING_OPTIONS}
+						onModelChange={handleModelChange}
+						onReasoningChange={handleReasoningChange}
+					/>
 				</>
 			) : null}
 		</div>
