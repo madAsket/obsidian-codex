@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-codex-plugin",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"description": "Redstone Copilot",
 	"main": "main.js",
 	"type": "module",
