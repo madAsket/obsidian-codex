@@ -5,7 +5,7 @@
 	"minAppVersion": "0.15.0",
 	"description": "Codex-powered AI-copilot. Works within your OpenAI subscription plan and no API key required.",
 	"author": "Den Volkov aka MadAsket",
-	"authorUrl": "https://github.com/madAsket/obsidian-codex",
+	"authorUrl": "https://github.com/madAsket",
 	"fundingUrl": "https://buymeacoffee.com/madasket",
 	"isDesktopOnly": true
 }
