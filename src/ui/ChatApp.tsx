@@ -637,7 +637,7 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 						className={`codex-title-dot codex-title-dot-${indicatorState}`}
 						aria-hidden="true"
 					/>
-					<div className="codex-title">Codex</div>
+					<div className="codex-title">Redstone</div>
 				</div>
 				<div className="codex-header-right">
 					<div className="codex-chat-controls">

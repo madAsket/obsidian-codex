@@ -23,7 +23,7 @@ export default class CodexPlugin extends Plugin {
       new CodexView(leaf, this)
     );
 
-    this.addRibbonIcon("message-circle-code", "Codex: Toggle sidebar", () => {
+    this.addRibbonIcon("message-circle-code", "Redstone Copilot Sidebar", () => {
       void this.toggleSidebar();
     });
 

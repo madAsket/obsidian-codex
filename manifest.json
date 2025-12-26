@@ -1,11 +1,11 @@
 {
 	"id": "obsidian-codex",
-	"name": "Obsidian Codex Plugin",
-	"version": "1.0.0",
+	"name": "Redstone Copilot",
+	"version": "0.3.0",
 	"minAppVersion": "0.15.0",
-	"description": "Obsidian Codex.",
-	"author": "MadAsket",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"description": "Modern & Convinient agentic AI-Copilot based on Codex CLI",
+	"author": "Den Volkov aka MadAsket",
+	"authorUrl": "https://github.com/madAsket/obsidian-codex",
+	"fundingUrl": "https://buymeacoffee.com/madasket",
 	"isDesktopOnly": true
 }

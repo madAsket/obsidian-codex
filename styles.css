@@ -328,6 +328,14 @@
   box-shadow: none;
 }
 
+.codex-textarea::-webkit-scrollbar {
+  width: 4px;               /* width of the entire scrollbar */
+}
+.codex-textarea::-webkit-scrollbar-thumb {
+  background-color: #5c5c5c;    /* color of the scroll thumb */
+  border-radius: 20px;       /* roundness of the scroll thumb */
+}
+
 .codex-input-actions {
   display: flex;
   justify-content: space-between;

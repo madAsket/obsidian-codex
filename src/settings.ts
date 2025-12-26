@@ -68,6 +68,8 @@ export class CodexSettingsTab extends PluginSettingTab {
 
     const settings = this.access.getSettings();
 
+    containerEl.createEl("h3", { text: "Model Setttings" });
+
     new Setting(containerEl).setName("Model").addDropdown((dropdown) => {
       for (const option of MODEL_OPTIONS) {
         dropdown.addOption(option, option);

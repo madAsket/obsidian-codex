@@ -1,90 +1,147 @@
-# Obsidian Sample Plugin
+<div align="center">
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+<!-- TODO: Replace with a real logo if/when you have one -->
+<!-- <img src="assets/logo.png" alt="Redstone Copilot" width="120" /> -->
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+# Redstone Copilot
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+**A modern, convenient Codex-powered copilot sidebar for Obsidian.**
 
-## First time developing plugins?
+<!-- Badges (release number comes from GitHub Releases) -->
+[![Release](https://img.shields.io/github/v/release/madAsket/obsidian-codex?display_name=tag&sort=semver)](https://github.com/madAsket/obsidian-codex/releases)
+[![Downloads](https://img.shields.io/github/downloads/madAsket/obsidian-codex/total)](https://github.com/madAsket/obsidian-codex/releases)
+[![License](https://img.shields.io/github/license/madAsket/obsidian-codex)](./LICENSE)
 
-Quick starting guide for new plugin devs:
+</div>
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+> [!NOTE]
+> This plugin is powered by the **Codex CLI**. It uses your **global Codex installation and auth** (typically `~/.codex`).
 
-## Releasing new releases
+---
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+## Screenshot
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+<!-- TODO: Replace with a real screenshot before publishing -->
+![Redstone Copilot UI (placeholder)](assets/screenshot-placeholder.png)
 
-## Adding your plugin to the community plugin list
+---
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+## Important limitations (MVP)
 
-## How to use
+> [!WARNING]
+> **Global Codex CLI only.** This plugin currently works with your **globally installed** `@openai/codex` and its global auth/config. Per-vault Codex profiles (e.g. vault-local `CODEX_HOME`) are **not supported** right now.
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+> [!WARNING]
+> **Desktop-only:** macOS and Linux are supported. Windows and mobile are not supported in the current release.
 
-## Manually installing the plugin
+---
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+## Why Codex CLI is great (and why this plugin builds on it)
 
-## Improve code quality with eslint
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
+- **Sign in with ChatGPT** — we recommend signing into your ChatGPT account to use Codex as part of your Plus, Pro, Team, Edu, or Enterprise plan.
+  - Learn what’s included in your ChatGPT plan: https://help.openai.com/en/articles/11369540-codex-in-chatgpt
+- **Chat history built-in** — Codex manages conversation threads and can resume them across sessions.
+- **Directory-aware by design** — Codex is built to work inside a project folder, so it can reason over files in your vault (with the safety constraints you choose).
 
-## Funding URL
+---
 
-You can include funding URLs where people who use your plugin can financially support it.
+## What you can do
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+- Open the Codex sidebar from the ribbon icon (left toolbar).
+- Chat with Codex to answer questions or create/edit notes in your vault.
+- Choose context:
+  - Use **only the current note**, or
+  - Use the **whole vault** as context.
+- Create multiple chats and switch between them (each chat keeps its own history).
+- See per-chat token usage in the header.
+- Stop a running response (the message is marked as *Cancelled*).
+- Open plugin settings from the header gear icon.
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
+---
+
+## Installation
+
+### 1) Install Codex CLI (global)
+
+```bash
+npm install -g @openai/codex
 ```
 
-If you have multiple URLs, you can also do:
+More info: https://developers.openai.com/codex/cli/
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
+### 2) Sign in once (terminal)
+
+Run Codex in your terminal and follow the prompts:
+
+```bash
+codex
 ```
 
-## API Documentation
+### 3) Enable the plugin in Obsidian
 
-See https://docs.obsidian.md
+- Open **Settings → Community plugins**
+- Enable this plugin
+- Open the sidebar from the ribbon icon
+
+If Codex is missing or you are not logged in, the sidebar shows a short message with a **Retry** button.
+
+---
+
+## AGENTS.md (vault instructions)
+
+This plugin creates an `AGENTS.md` file in your **vault root**.
+
+- It contains baseline instructions so Codex understands it’s working inside an Obsidian vault.
+- You can **freely edit** `AGENTS.md` to add your own rules and conventions.
+
+### Why you should edit it
+
+Different vaults have different conventions:
+- Zettelkasten vs PARA vs project-based vaults
+- Frontmatter schemas
+- Tagging rules
+- Folder structures
+- Templates
+
+Add instructions like:
+- Where new notes should be created
+- How to name files
+- What frontmatter fields are required
+- What style/format you want for summaries
+
+> [!TIP]
+> Treat `AGENTS.md` as your “vault handbook” for AI.
+
+---
+
+## Settings
+
+- **Model and reasoning level** (applies immediately).
+- **Internet access** (optional, off by default).
+- **Web search requests** (only available when Internet access is on).
+
+---
+
+## Support
+
+- Questions / ideas: **GitHub Discussions** (link to be added)
+- Bug reports: **GitHub Issues** (link to be added)
+
+Repository: https://github.com/madAsket/obsidian-codex
+
+---
+
+## Buy me a coffee
+
+If this plugin saves you time, consider supporting it:
+
+<a href="https://buymeacoffee.com/placeholder" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="45">
+</a>
+
+---
+
+## Disclaimer
+
+This is an independent community plugin and is not affiliated with Obsidian or OpenAI.
+
