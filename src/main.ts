@@ -22,7 +22,7 @@ export default class CodexPlugin extends Plugin {
       new CodexView(leaf, this)
     );
 
-    this.addRibbonIcon("message-circle-code", "Redstone Copilot Sidebar", () => {
+    this.addRibbonIcon("message-circle-code", "Open copilot", () => {
       void this.toggleSidebar();
     });
 
@@ -50,7 +50,7 @@ export default class CodexPlugin extends Plugin {
     }
 
     await leaf.setViewState({ type: VIEW_TYPE, active: true });
-    this.app.workspace.revealLeaf(leaf);
+    await this.app.workspace.revealLeaf(leaf);
   }
 
   private async ensureAgentsFile(): Promise<void> {

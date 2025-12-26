@@ -27,7 +27,7 @@ export function BootstrapPanel({
 	errorMessage,
 	pluginRootAvailable,
 	installUrl,
-}: BootstrapPanelProps): JSX.Element | null {
+}: BootstrapPanelProps): React.JSX.Element | null {
 	if (!visible) {
 		return null;
 	}

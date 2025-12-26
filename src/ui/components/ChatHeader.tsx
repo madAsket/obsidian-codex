@@ -28,7 +28,7 @@ export function ChatHeader({
 	onNewChat,
 	onOpenSettings,
 	tokenSummary,
-}: ChatHeaderProps): JSX.Element {
+}: ChatHeaderProps): React.JSX.Element {
 	return (
 		<div className="codex-header">
 			<div className="codex-title-wrap">

@@ -12,7 +12,7 @@ export function ErrorNotice({
 	errorMessage,
 	onRetry,
 	retryDisabled,
-}: ErrorNoticeProps): JSX.Element | null {
+}: ErrorNoticeProps): React.JSX.Element | null {
 	if (!visible) {
 		return null;
 	}

@@ -1,6 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
+import process from "process";
 
 const WIN_BIN_NAMES = ["codex.exe", "codex.cmd", "codex.bat"];
 const BIN_NAMES = process.platform === "win32" ? WIN_BIN_NAMES : ["codex"];
@@ -68,7 +69,7 @@ function resolveNvmBins(): string[] {
     return entries
       .filter((entry) => entry.isDirectory())
       .map((entry) => path.join(versionsDir, entry.name, "bin"));
-  } catch (error) {
+  } catch {
     return [];
   }
 }

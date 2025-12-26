@@ -6,7 +6,7 @@ type CheckingNoticeProps = {
 
 export function CheckingNotice({
 	visible,
-}: CheckingNoticeProps): JSX.Element | null {
+}: CheckingNoticeProps): React.JSX.Element | null {
 	if (!visible) {
 		return null;
 	}

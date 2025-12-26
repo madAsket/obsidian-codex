@@ -91,7 +91,7 @@ function isAbortError(error: unknown): boolean {
 	return false;
 }
 
-export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
+export function ChatApp({ app, dataStore }: ChatAppProps): React.JSX.Element {
 	const initialChat = dataStore.getActiveChat();
 	const [chatList, setChatList] = useState(dataStore.getChats());
 	const [activeChatId, setActiveChatId] = useState(initialChat.id);
@@ -220,7 +220,7 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 		let active = true;
 		setAuthChecking(true);
 
-		service
+		void service
 			.checkAuthStatus()
 			.then((result) => {
 				if (!active) {
@@ -229,6 +229,14 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 				setAuthStatus(result.authStatus);
 				setCodexInstalled(result.codexInstalled);
 				setErrorMessage(result.errorMessage);
+			})
+			.catch((error) => {
+				if (!active) {
+					return;
+				}
+				setAuthStatus("unknown");
+				setCodexInstalled(false);
+				setErrorMessage(getErrorMessage(error));
 			})
 			.finally(() => {
 				if (!active) {
@@ -400,7 +408,7 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 			});
 
 			if (streamError) {
-				throw streamError;
+				throw streamError as Error;
 			}
 
 			setAuthStatus("logged-in");
@@ -750,8 +758,8 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 				activeChatId={activeChatId}
 				chatList={chatList}
 				busy={busy}
-				onChatChange={handleChatChange}
-				onNewChat={handleNewChat}
+				onChatChange={(event) => void handleChatChange(event)}
+				onNewChat={() => void handleNewChat()}
 				onOpenSettings={handleOpenSettings}
 				tokenSummary={tokenSummary}
 			/>
@@ -761,9 +769,9 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 				candidates={codexCandidates}
 				selectedCandidate={selectedCandidate}
 				onSelectCandidate={(value) => setSelectedCandidate(value)}
-				onSaveCandidate={handleSaveCandidate}
-				onDownload={handleDownloadCodex}
-				onCheckInstall={handleCheckInstall}
+				onSaveCandidate={() => void handleSaveCandidate()}
+				onDownload={() => void handleDownloadCodex()}
+				onCheckInstall={() => void handleCheckInstall()}
 				busy={bootstrapBusy}
 				errorMessage={bootstrapError}
 				pluginRootAvailable={!!pluginRoot}
@@ -777,7 +785,7 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 				loginBusy={loginBusy}
 				retryDisabled={retryDisabled}
 				loginError={loginError}
-				onAuthorize={handleBrowserLogin}
+				onAuthorize={() => void handleBrowserLogin()}
 				onCheck={handleRetry}
 			/>
 

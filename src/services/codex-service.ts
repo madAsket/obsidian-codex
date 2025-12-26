@@ -1,6 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { Buffer } from "buffer";
 import { spawn } from "child_process";
 import { Codex, type Input, type Thread, type ThreadEvent, type ThreadOptions } from "@openai/codex-sdk";
 import type { App } from "obsidian";
@@ -161,7 +162,7 @@ function hasAuthFile(): boolean {
   const authPath = path.join(os.homedir(), ".codex", "auth.json");
   try {
     return fs.existsSync(authPath);
-  } catch (error) {
+  } catch {
     return false;
   }
 }

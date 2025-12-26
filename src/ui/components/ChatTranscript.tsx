@@ -13,7 +13,7 @@ export const ChatTranscript = React.forwardRef<
 >(function ChatTranscript(
 	{ messages, contextScope, streamingMessageId },
 	ref
-): JSX.Element {
+): React.JSX.Element {
 	return (
 		<div className="codex-transcript" ref={ref}>
 			{messages.length === 0 ? (

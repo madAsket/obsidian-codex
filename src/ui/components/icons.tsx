@@ -1,6 +1,6 @@
 import React from "react";
 
-export const SendIcon = (): JSX.Element => (
+export const SendIcon = (): React.JSX.Element => (
 	<svg viewBox="0 0 24 24" aria-hidden="true">
 		<path
 			d="M4 12L20 4l-4 16-4.2-6.2L4 12z"
@@ -9,13 +9,13 @@ export const SendIcon = (): JSX.Element => (
 	</svg>
 );
 
-export const StopIcon = (): JSX.Element => (
+export const StopIcon = (): React.JSX.Element => (
 	<svg viewBox="0 0 24 24" aria-hidden="true">
 		<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
 	</svg>
 );
 
-export const SettingsIcon = (): JSX.Element => (
+export const SettingsIcon = (): React.JSX.Element => (
 	<svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
 		<path
 			d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"

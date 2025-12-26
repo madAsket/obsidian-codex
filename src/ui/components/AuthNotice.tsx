@@ -18,7 +18,7 @@ export function AuthNotice({
 	loginError,
 	onAuthorize,
 	onCheck,
-}: AuthNoticeProps): JSX.Element | null {
+}: AuthNoticeProps): React.JSX.Element | null {
 	if (!visible) {
 		return null;
 	}

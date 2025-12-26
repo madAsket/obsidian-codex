@@ -123,7 +123,7 @@ export class DataStore {
   }
 
   async load(vaultName: string): Promise<void> {
-    const raw = await this.plugin.loadData();
+    const raw: unknown = await this.plugin.loadData();
     this.data = normalizeData(raw, vaultName);
     await this.ensureChatsDir();
 

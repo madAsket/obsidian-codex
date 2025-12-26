@@ -115,7 +115,7 @@ export class CodexSettingsTab extends PluginSettingTab {
 
     const settings = this.access.getSettings();
 
-    new Setting(containerEl).setName("Model options").setHeading();
+    new Setting(containerEl).setName("Model").setHeading();
 
     new Setting(containerEl).setName("Model").addDropdown((dropdown) => {
       for (const option of MODEL_OPTIONS) {
@@ -174,7 +174,7 @@ export class CodexSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Codex CLI")
-      .setDesc("Select which Codex executable to use.")
+      .setDesc("Select which codex executable to use.")
       .addDropdown((dropdown) => {
         for (const option of codexOptions) {
           dropdown.addOption(option.value, option.label);
@@ -206,7 +206,7 @@ export class CodexSettingsTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Internet access")
       .setDesc(
-        "Enables network access for Codex. This may send data to external services."
+        "Enables network access for codex. This may send data to external services."
       )
       .addToggle((toggle) => {
         toggle.setValue(settings.internetAccess);
@@ -223,7 +223,7 @@ export class CodexSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Web search requests")
-      .setDesc("Allow Codex to request web searches. Requires Internet access.")
+      .setDesc("Allow codex to request web searches. Requires internet access.")
       .addToggle((toggle) => {
         toggle.setValue(settings.webSearch);
         toggle.setDisabled(!settings.internetAccess);

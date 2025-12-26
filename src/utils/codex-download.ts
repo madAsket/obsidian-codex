@@ -1,7 +1,9 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
+import process from "process";
 import { spawn } from "child_process";
+import { Buffer } from "buffer";
 import { requestUrl } from "obsidian";
 import { CODEX_RELEASE_TAG } from "../constants";
 
@@ -158,7 +160,7 @@ export async function downloadCodexBinary(
   } finally {
     try {
       await fs.promises.rm(tmpPath, { force: true });
-    } catch (error) {
+    } catch {
       // ignore cleanup errors
     }
   }

@@ -27,7 +27,7 @@ export function ChatInput({
 	onContextChange,
 	onSend,
 	onStop,
-}: ChatInputProps): JSX.Element {
+}: ChatInputProps): React.JSX.Element {
 	return (
 		<div className="codex-input">
 			<textarea

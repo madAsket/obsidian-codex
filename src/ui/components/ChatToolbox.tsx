@@ -17,7 +17,7 @@ export function ChatToolbox({
 	reasoningOptions,
 	onModelChange,
 	onReasoningChange,
-}: ChatToolboxProps): JSX.Element {
+}: ChatToolboxProps): React.JSX.Element {
 	return (
 		<div className="codex-toolbox">
 			<div className="codex-toolbox-field">
