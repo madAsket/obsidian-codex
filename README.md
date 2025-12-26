@@ -1,8 +1,5 @@
 <div align="center">
 
-<!-- TODO: Replace with a real logo if/when you have one -->
-<!-- <img src="assets/logo.png" alt="Redstone Copilot" width="120" /> -->
-
 # Redstone Copilot
 
 **A modern, convenient Codex-powered AI-copilot sidebar for Obsidian.**
@@ -15,7 +12,10 @@
 </div>
 
 > [!NOTE]
-> This plugin is powered by the **Codex CLI**. It uses your **global Codex installation and auth**.
+> This plugin is powered by the **Codex CLI**. Works within your OpenAI subscription plan and no API key required. [More info about Codex CLI.](https://developers.openai.com/codex/cli/)
+
+> [!WARNING]
+> **Desktop-only:** macOS, Windows and Linux are supported. Mobile is not supported.
 
 ---
 
@@ -26,7 +26,7 @@
 ### Features
 - Chat with Codex to answer questions or create/edit notes in your vault.
 - Use Codex models and Reasoning GPT models like GPT-5.2
-- No API Key needed. Sign in with ChatGPT via email.
+- No API Key required. Sign in with ChatGPT via email.
 - Choose context:
   - Use **only the current note**, or
   - Use the **whole vault** as context.
@@ -42,43 +42,11 @@
 
 - **Directory-aware by design** — Make summaries, reports, and more for all the notes in your vault. Codex is built to work inside a project folder, so it can reason over files in your vault.
 
----
+## Important notes
 
-## MVP limitations
+- During plugin setup, Redstone downloads the official Codex CLI binary for your system into the plugin directory. File details and release assets: https://github.com/openai/codex/releases/
 
-> [!WARNING]
-> **Global Codex CLI only.** This plugin currently works with your **globally installed** `@openai/codex` and its global auth/config.
-> **Desktop-only:** macOS and Linux are supported. Windows and mobile are not supported in the current release.
-
-## Installation
-
-### 1) Install Codex CLI (global)
-
-```bash
-npm install -g @openai/codex
-```
-
-[More info about Codex CLI & other methods of installation.](https://developers.openai.com/codex/cli/)
-
-### 2) Sign in once (terminal)
-
-Run Codex in your terminal and follow the prompts:
-
-```bash
-codex
-```
-
-### 3) Enable the plugin in Obsidian
-
-- Open **Settings → Community plugins**
-- Enable this plugin
-- Open the Redstone sidebar from the ribbon icon (left toolbar).
-
-If Codex is missing or you are not logged in, the sidebar shows a short message with a **Retry** button - follow the instruction and press **Retry**.
-
----
-
-## AGENTS.md (vault instructions)
+## About AGENTS.md (vault instructions)
 
 This plugin creates an `AGENTS.md` file in your **vault root**.
 - It contains baseline instructions so Codex understands it’s working inside an Obsidian vault.
@@ -107,6 +75,7 @@ Add instructions like:
 ## Settings
 
 - **Model and reasoning level** (applies immediately).
+- **Codex CLI** (binary selector).
 - **Internet access** (optional, off by default).
 - **Web search requests** (only available when Internet access is on).
 
@@ -132,4 +101,3 @@ If this plugin saves you time, please support me and further development:
 ## Disclaimer
 
 This is an independent community plugin and is not affiliated with Obsidian or OpenAI.
-

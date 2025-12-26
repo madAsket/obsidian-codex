@@ -44,9 +44,14 @@ export class CodexService {
   constructor(app: App, threadId: string | null, settings: CodexSettings) {
     this.app = app;
     this.threadId = threadId;
-    const resolvedCodexPath = resolveCodexPath();
+    let resolvedCodexPath: string | null = null;
+    if (settings.codexPathMode === "custom") {
+      resolvedCodexPath = resolveCodexPath(settings.codexPath);
+    } else if (settings.codexPathMode === "auto") {
+      resolvedCodexPath = resolveCodexPath();
+    }
     this.codexInstalled = resolvedCodexPath !== null;
-    this.codexPath = resolvedCodexPath ?? "codex";
+    this.codexPath = resolvedCodexPath ?? settings.codexPath ?? "codex";
     this.codexEnv = buildCodexEnv(this.codexPath);
     this.codex = new Codex({
       codexPathOverride: this.codexPath,
@@ -85,6 +90,15 @@ export class CodexService {
       webSearchEnabled,
     };
     this.thread = null;
+  }
+
+  async startLoginFlow(
+    handlers: { onUrl?: (url: string) => void } = {}
+  ): Promise<{ url: string | null; exitCode: number | null }> {
+    if (!this.codexInstalled) {
+      throw new Error("Codex CLI is not available");
+    }
+    return runLoginFlow(this.codexPath, this.codexEnv, handlers.onUrl);
   }
 
   private ensureThread(): void {
@@ -190,6 +204,55 @@ function runLoginStatus(
       }
       settled = true;
       resolve(code);
+    });
+  });
+}
+
+function extractLoginUrl(text: string): string | null {
+  const match = text.match(/https?:\/\/\S+/i);
+  return match ? match[0] : null;
+}
+
+function runLoginFlow(
+  command: string,
+  env: Record<string, string>,
+  onUrl?: (url: string) => void
+): Promise<{ url: string | null; exitCode: number | null }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, ["login"], { env });
+    let settled = false;
+    let url: string | null = null;
+    let buffer = "";
+
+    const handleOutput = (chunk: Buffer) => {
+      const text = chunk.toString();
+      buffer = `${buffer}${text}`.slice(-2000);
+      if (!url) {
+        const found = extractLoginUrl(buffer);
+        if (found) {
+          url = found;
+          onUrl?.(found);
+        }
+      }
+    };
+
+    child.stdout?.on("data", handleOutput);
+    child.stderr?.on("data", handleOutput);
+
+    child.once("error", (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      reject(error);
+    });
+
+    child.once("close", (code) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      resolve({ url, exitCode: code });
     });
   });
 }

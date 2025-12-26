@@ -1,4 +1,5 @@
-import { normalizePath, type Plugin } from "obsidian";
+import path from "path";
+import { FileSystemAdapter, normalizePath, type Plugin } from "obsidian";
 import { MAX_MESSAGES } from "../constants";
 import type {
   ChatContextScope,
@@ -162,6 +163,18 @@ export class DataStore {
 
   getPluginId(): string {
     return this.plugin.manifest.id;
+  }
+
+  getPluginRootPath(): string | null {
+    const adapter = this.plugin.app.vault.adapter;
+    if (!(adapter instanceof FileSystemAdapter)) {
+      return null;
+    }
+    const pluginDir = this.plugin.manifest.dir;
+    if (!pluginDir) {
+      return null;
+    }
+    return path.normalize(path.join(adapter.getBasePath(), pluginDir));
   }
 
   getChats(): ChatMeta[] {

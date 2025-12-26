@@ -2,7 +2,8 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-const BIN_NAME = process.platform === "win32" ? "codex.exe" : "codex";
+const WIN_BIN_NAMES = ["codex.exe", "codex.cmd", "codex.bat"];
+const BIN_NAMES = process.platform === "win32" ? WIN_BIN_NAMES : ["codex"];
 const EXPLICIT_PATH_KEYS = ["CODEX_PATH", "CODEX_BIN"];
 
 const FALLBACK_DIRS = [
@@ -35,6 +36,16 @@ function unique(list: string[]): string[] {
   });
 }
 
+function findBinInDir(dir: string): string | null {
+  for (const name of BIN_NAMES) {
+    const candidate = path.join(dir, name);
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
 function resolveExplicitPath(): string | null {
   for (const key of EXPLICIT_PATH_KEYS) {
     const value = process.env[key]?.trim();
@@ -62,30 +73,68 @@ function resolveNvmBins(): string[] {
   }
 }
 
-export function resolveCodexPath(): string | null {
+function getSearchDirs(): string[] {
+  const envPaths = splitPath(process.env.PATH);
+  const nvmBin = process.env.NVM_BIN ? [process.env.NVM_BIN] : [];
+  const nvmBins = resolveNvmBins();
+  return unique([...envPaths, ...nvmBin, ...nvmBins, ...FALLBACK_DIRS]);
+}
+
+export function resolveCodexPath(preferredPath?: string | null): string | null {
+  const trimmedPreferred = preferredPath?.trim();
+  if (trimmedPreferred) {
+    return fs.existsSync(trimmedPreferred) ? trimmedPreferred : null;
+  }
+
   const explicitPath = resolveExplicitPath();
   if (explicitPath) {
     return explicitPath;
   }
 
-  const envPaths = splitPath(process.env.PATH);
-  const nvmBin = process.env.NVM_BIN ? [process.env.NVM_BIN] : [];
-  const nvmBins = resolveNvmBins();
-  const candidates = unique([
-    ...envPaths,
-    ...nvmBin,
-    ...nvmBins,
-    ...FALLBACK_DIRS,
-  ]);
-
-  for (const dir of candidates) {
-    const candidate = path.join(dir, BIN_NAME);
-    if (fs.existsSync(candidate)) {
+  for (const dir of getSearchDirs()) {
+    const candidate = findBinInDir(dir);
+    if (candidate) {
       return candidate;
     }
   }
 
   return null;
+}
+
+export type CodexCandidate = {
+  label: string;
+  path: string;
+};
+
+export function getCodexCandidates(pluginDir?: string | null): CodexCandidate[] {
+  const candidates: CodexCandidate[] = [];
+  const seen = new Set<string>();
+
+  const addCandidate = (label: string, candidatePath: string | null) => {
+    if (!candidatePath || seen.has(candidatePath)) {
+      return;
+    }
+    seen.add(candidatePath);
+    candidates.push({ label, path: candidatePath });
+  };
+
+  addCandidate("Env (CODEX_PATH/CODEX_BIN)", resolveExplicitPath());
+
+  if (pluginDir) {
+    const localBin = findBinInDir(path.join(pluginDir, "bin"));
+    addCandidate("Plugin (downloaded)", localBin);
+    const npmBin = findBinInDir(path.join(pluginDir, "node_modules", ".bin"));
+    addCandidate("Plugin (node_modules/.bin)", npmBin);
+  }
+
+  for (const dir of getSearchDirs()) {
+    const candidate = findBinInDir(dir);
+    if (candidate) {
+      addCandidate(`System: ${dir}`, candidate);
+    }
+  }
+
+  return candidates;
 }
 
 export function buildCodexEnv(codexPath?: string | null): Record<string, string> {
