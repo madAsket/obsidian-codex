@@ -1,7 +1,7 @@
 {
-	"id": "obsidian-codex",
+	"id": "redstone-copilot",
 	"name": "Redstone Copilot",
-	"version": "0.3.2",
+	"version": "0.3.3",
 	"minAppVersion": "0.15.0",
 	"description": "Modern and convenient Codex-powered AI-copilot for Obsidian.",
 	"author": "Den Volkov aka MadAsket",
