@@ -1,3 +1,4 @@
+
 .codex-view {
   --codex-bg: radial-gradient(
       circle at 10% 12%,
@@ -21,10 +22,18 @@
   --codex-warning: #ffb347;
   --codex-danger: #ff6b6b;
   --codex-shadow: 0 18px 32px rgba(3, 7, 12, 0.35);
+  --codex-bubble:rgba(68, 68, 68, 0.286);
   height: 100%;
   color: var(--codex-text);
   font-family: "Space Grotesk", "IBM Plex Sans", "SF Pro Text", sans-serif;
 }
+
+.theme-light .codex-view {
+  --codex-text: #363636;
+  --codex-bubble:rgba(163, 163, 163, 0.286);
+  --codex-muted: #515a68;
+}
+
 
 .codex-shell {
   height: 100%;
@@ -156,11 +165,8 @@
 }
 
 .codex-empty-state {
-  /* background: var(--codex-panel); */
   border-radius: 16px;
   padding: 18px;
-  /* border: 1px solid var(--codex-border); */
-  /* box-shadow: var(--codex-shadow); */
   display: flex;
   vertical-align: middle;
   text-align: center;
@@ -257,7 +263,7 @@
   max-width: 90%;
   padding: 10px 12px;
   border-radius: 14px;
-  background: rgba(68, 68, 68, 0.286);
+  background:var(--codex-bubble);
 }
 
 .codex-message-assistant {
@@ -276,7 +282,7 @@
 
 .codex-message-text {
   font-size: 13px;
-  color:#d3d9e2;
+  color:var(--codex-text);
   line-height: 1.4;
   white-space: pre-wrap;
 }
@@ -348,7 +354,7 @@
   height: 34px;
   border-radius: 45px;
   border: none;
-  background: rgba(245, 245, 245, 0.96);
+  /* background: rgba(245, 245, 245, 0.96); */
   color: #111111;
   cursor: pointer;
   display: inline-flex;
