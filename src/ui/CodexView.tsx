@@ -22,6 +22,10 @@ export class CodexView extends ItemView {
     return VIEW_TITLE;
   }
 
+  getIcon(): string {
+    return "message-circle-code";
+  }
+
   async onOpen(): Promise<void> {
     this.contentEl.empty();
     const container = this.contentEl.createDiv({ cls: "codex-view" });
