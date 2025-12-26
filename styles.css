@@ -144,7 +144,6 @@
   font-size: 14px;
   text-align: center;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--codex-muted);
 }
 
@@ -233,7 +232,6 @@
 .codex-title {
   font-size: 18px;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
   font-weight: 600;
 }
 
@@ -333,7 +331,6 @@
   color: var(--codex-accent-alt);
   font-size: 12px;
   letter-spacing: 0.05em;
-  text-transform: uppercase;
   cursor: pointer;
   transition: transform 0.15s ease;
 }

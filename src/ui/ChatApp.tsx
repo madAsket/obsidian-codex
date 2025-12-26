@@ -334,13 +334,7 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 				return;
 			}
 
-			if (event.type === "thread.started") {
-				console.log("Codex: thread started", event.thread_id);
-			}
 
-			if (event.type === "turn.started") {
-				console.log("Codex: turn started");
-			}
 
 			if (event.type === "turn.failed") {
 				console.error("Codex: turn failed", event.error);
@@ -362,7 +356,6 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 				usageRef.current = nextUsage;
 				setUsage(nextUsage);
 				dataStore.updateChatUsage(nextUsage);
-				console.log("Codex: turn completed", event.usage);
 				return;
 			}
 
@@ -372,14 +365,6 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 				return;
 			}
 
-			if (
-				(event.type === "item.started" ||
-					event.type === "item.updated" ||
-					event.type === "item.completed") &&
-				event.item.type !== "agent_message"
-			) {
-				console.log(`Codex: ${event.type}`, event.item);
-			}
 
 			if (
 				(event.type === "item.updated" ||

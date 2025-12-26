@@ -115,7 +115,7 @@ export class CodexSettingsTab extends PluginSettingTab {
 
     const settings = this.access.getSettings();
 
-    containerEl.createEl("h3", { text: "Model Setttings" });
+    new Setting(containerEl).setName("Model options").setHeading();
 
     new Setting(containerEl).setName("Model").addDropdown((dropdown) => {
       for (const option of MODEL_OPTIONS) {
@@ -201,7 +201,7 @@ export class CodexSettingsTab extends PluginSettingTab {
         });
       });
 
-    containerEl.createEl("h3", { text: "Advanced" });
+    new Setting(containerEl).setName("Advanced").setHeading();
 
     new Setting(containerEl)
       .setName("Internet access")

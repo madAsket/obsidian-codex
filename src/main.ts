@@ -37,10 +37,6 @@ export default class CodexPlugin extends Plugin {
     registerCommands(this);
   }
 
-  onunload(): void {
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE);
-  }
-
   async toggleSidebar(): Promise<void> {
     const existingLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE);
     if (existingLeaves.length > 0) {
