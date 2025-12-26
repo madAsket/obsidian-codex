@@ -21,9 +21,13 @@ export type CodexReasoning =
   | "high"
   | "xhigh";
 
+export type CodexPathMode = "unset" | "auto" | "custom";
+
 export type CodexSettings = {
   model: CodexModel;
   reasoning: CodexReasoning;
+  codexPathMode: CodexPathMode;
+  codexPath: string | null;
   internetAccess: boolean;
   webSearch: boolean;
 };

@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import type { App } from "obsidian";
 import type { ThreadEvent } from "@openai/codex-sdk";
-import { MAX_MESSAGES } from "../constants";
+import { CODEX_RELEASE_TAG, MAX_MESSAGES } from "../constants";
 import type {
 	AuthStatus,
 	CodexModel,
@@ -20,6 +20,8 @@ import { DataStore } from "../data/data-store";
 import { createId } from "../utils/ids";
 import { getActiveNoteReference } from "../services/note-context";
 import { CodexService } from "../services/codex-service";
+import { downloadCodexBinary } from "../utils/codex-download";
+import { getCodexCandidates } from "../utils/codex-path";
 import { buildPrompt } from "../utils/prompt";
 import { MODEL_OPTIONS, REASONING_OPTIONS } from "../settings";
 
@@ -27,10 +29,7 @@ const INSTALL_URL = "https://developers.openai.com/codex/cli/";
 
 const SendIcon = (): JSX.Element => (
 	<svg viewBox="0 0 24 24" aria-hidden="true">
-		<path
-			d="M4 12L20 4l-4 16-4.2-6.2L4 12z"
-			fill="currentColor"
-		/>
+		<path d="M4 12L20 4l-4 16-4.2-6.2L4 12z" fill="currentColor" />
 	</svg>
 );
 
@@ -125,9 +124,9 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 	const [settings, setSettings] = useState<CodexSettings>(
 		dataStore.getSettings()
 	);
-	const [contextScope, setContextScope] = useState<
-		"vault" | "current-note"
-	>(initialChat.contextScope);
+	const [contextScope, setContextScope] = useState<"vault" | "current-note">(
+		initialChat.contextScope
+	);
 	const [input, setInput] = useState("");
 	const [busy, setBusy] = useState(false);
 	const [authChecking, setAuthChecking] = useState(false);
@@ -137,6 +136,13 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 	const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
 		null
 	);
+	const [bootstrapBusy, setBootstrapBusy] = useState(false);
+	const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+	const [bootstrapRefresh, setBootstrapRefresh] = useState(0);
+	const [selectedCandidate, setSelectedCandidate] = useState("");
+	const [loginUrl, setLoginUrl] = useState<string | null>(null);
+	const [loginBusy, setLoginBusy] = useState(false);
+	const [loginError, setLoginError] = useState<string | null>(null);
 
 	const transcriptRef = useRef<HTMLDivElement | null>(null);
 	const abortRef = useRef<AbortController | null>(null);
@@ -152,8 +158,45 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 				dataStore.getActiveChat().threadId ?? null,
 				settings
 			),
-		[app, dataStore, serviceToken, activeChatId]
+		[
+			app,
+			dataStore,
+			serviceToken,
+			activeChatId,
+			settings.codexPath,
+			settings.codexPathMode,
+		]
 	);
+
+	const pluginRoot = useMemo(
+		() => dataStore.getPluginRootPath(),
+		[dataStore]
+	);
+	const codexCandidates = useMemo(
+		() => getCodexCandidates(pluginRoot),
+		[pluginRoot, bootstrapRefresh]
+	);
+	const hasCandidates = codexCandidates.length > 0;
+
+	useEffect(() => {
+		if (!hasCandidates) {
+			if (selectedCandidate) {
+				setSelectedCandidate("");
+			}
+			return;
+		}
+		if (
+			!selectedCandidate ||
+			!codexCandidates.some(
+				(candidate) => candidate.path === selectedCandidate
+			)
+		) {
+			const [first] = codexCandidates;
+			if (first) {
+				setSelectedCandidate(first.path);
+			}
+		}
+	}, [codexCandidates, hasCandidates, selectedCandidate]);
 
 	useEffect(() => {
 		messagesRef.current = messages;
@@ -189,6 +232,14 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 	}, []);
 
 	useEffect(() => {
+		if (settings.codexPathMode === "unset") {
+			setAuthChecking(false);
+			setAuthStatus("unknown");
+			setCodexInstalled(false);
+			setErrorMessage(null);
+			return;
+		}
+
 		let active = true;
 		setAuthChecking(true);
 
@@ -212,7 +263,7 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 		return () => {
 			active = false;
 		};
-	}, [service]);
+	}, [service, settings.codexPathMode]);
 
 	const commitMessages = useCallback(
 		(updater: (prev: Message[]) => Message[], save: boolean) => {
@@ -488,17 +539,27 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 	);
 
 	const indicatorState =
-		busy || (codexInstalled && authStatus === "logged-in")
-			? "ok"
-			: "error";
+		busy || (codexInstalled && authStatus === "logged-in") ? "ok" : "error";
+	const showHeaderControls = codexInstalled && authStatus === "logged-in";
+	const showBootstrap = settings.codexPathMode === "unset";
 	const shouldShowChat = codexInstalled && authStatus === "logged-in";
-	const showAuthNotice = codexInstalled && authStatus === "not-logged-in";
-	const showInstallNotice = !codexInstalled;
+	const showAuthNotice =
+		!showBootstrap && codexInstalled && authStatus === "not-logged-in";
+	const showInstallNotice = !showBootstrap && !codexInstalled;
 	const showChecking =
-		authChecking && !busy && !showInstallNotice && !showAuthNotice;
+		!showBootstrap &&
+		authChecking &&
+		!busy &&
+		!showInstallNotice &&
+		!showAuthNotice;
 	const showError =
-		!showInstallNotice && !showAuthNotice && !showChecking && !!errorMessage;
-	const showChat = shouldShowChat && !showChecking && !showError;
+		!showBootstrap &&
+		!showInstallNotice &&
+		!showAuthNotice &&
+		!showChecking &&
+		!!errorMessage;
+	const showChat =
+		!showBootstrap && shouldShowChat && !showChecking && !showError;
 
 	useEffect(() => {
 		if (!showChat) {
@@ -508,7 +569,8 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 			if (!transcriptRef.current) {
 				return;
 			}
-			transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
+			transcriptRef.current.scrollTop =
+				transcriptRef.current.scrollHeight;
 		});
 		return () => cancelAnimationFrame(frame);
 	}, [showChat, activeChatId]);
@@ -520,13 +582,16 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 		setAuthStatus("unknown");
 		setCodexInstalled(true);
 		setErrorMessage(null);
+		setLoginError(null);
+		setLoginUrl(null);
 		setAuthChecking(true);
 		setServiceToken((token) => token + 1);
 	}, [busy]);
 
 	const retryDisabled = busy || authChecking;
-	const actionDisabled =
-		busy ? false : input.trim().length === 0 || authChecking;
+	const actionDisabled = busy
+		? false
+		: input.trim().length === 0 || authChecking;
 	const actionLabel = busy ? "Stop" : "Send";
 	const totalTokens = usage.inputTokens + usage.outputTokens;
 	const tokenSummary = `Tokens: ${totalTokens} | in ${usage.inputTokens} | out ${usage.outputTokens} | cache ${usage.cachedInputTokens}`;
@@ -544,6 +609,103 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 		},
 		[dataStore]
 	);
+
+	const applyCodexSelection = useCallback(
+		async (path: string) => {
+			setBootstrapError(null);
+			dataStore.updateSettings({
+				codexPathMode: "custom",
+				codexPath: path,
+			});
+			await dataStore.saveMeta();
+			setServiceToken((token) => token + 1);
+		},
+		[dataStore]
+	);
+
+	const handleSaveCandidate = useCallback(async () => {
+		if (!selectedCandidate) {
+			return;
+		}
+		setBootstrapBusy(true);
+		try {
+			await applyCodexSelection(selectedCandidate);
+		} catch (error) {
+			setBootstrapError(getErrorMessage(error));
+		} finally {
+			setBootstrapBusy(false);
+		}
+	}, [applyCodexSelection, selectedCandidate]);
+
+	const handleDownloadCodex = useCallback(async () => {
+		if (!pluginRoot) {
+			setBootstrapError("Plugin directory is not available.");
+			return;
+		}
+		setBootstrapBusy(true);
+		setBootstrapError(null);
+		try {
+			const result = await downloadCodexBinary(pluginRoot);
+			await applyCodexSelection(result.path);
+		} catch (error) {
+			setBootstrapError(getErrorMessage(error));
+		} finally {
+			setBootstrapBusy(false);
+			setServiceToken((token) => token + 1);
+		}
+	}, [applyCodexSelection, pluginRoot]);
+
+	const handleBrowserLogin = useCallback(async () => {
+		setLoginBusy(true);
+		setLoginError(null);
+		setLoginUrl(null);
+		try {
+			const result = await service.startLoginFlow({
+				onUrl: (url) => {
+					setLoginUrl(url);
+					window.open(url, "_blank");
+				},
+			});
+			if (!result.url) {
+				setLoginError(
+					"Login URL was not detected. Run codex login in your terminal."
+				);
+			}
+		} catch (error) {
+			setLoginError(getErrorMessage(error));
+		} finally {
+			setLoginBusy(false);
+			setServiceToken((token) => token + 1);
+		}
+	}, [service]);
+
+	const handleCheckInstall = useCallback(async () => {
+		setBootstrapBusy(true);
+		setBootstrapError(null);
+		try {
+			const candidates = getCodexCandidates(pluginRoot);
+			setBootstrapRefresh((value) => value + 1);
+			if (candidates.length === 0) {
+				setBootstrapError(
+					"Codex CLI was not found. Install it and try again."
+				);
+				return;
+			}
+			const [first] = candidates;
+			if (!first) {
+				setBootstrapError(
+					"Codex CLI was not found. Install it and try again."
+				);
+				return;
+			}
+			setSelectedCandidate(first.path);
+			await applyCodexSelection(first.path);
+		} catch (error) {
+			setBootstrapError(getErrorMessage(error));
+		} finally {
+			setBootstrapBusy(false);
+		}
+	}, [applyCodexSelection, pluginRoot]);
 
 	const handleChatChange = useCallback(
 		async (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -633,53 +795,157 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 		<div className="codex-shell">
 			<div className="codex-header">
 				<div className="codex-title-wrap">
-					<span
-						className={`codex-title-dot codex-title-dot-${indicatorState}`}
-						aria-hidden="true"
-					/>
+					{showHeaderControls ? (
+						<span
+							className={`codex-title-dot codex-title-dot-${indicatorState}`}
+							aria-hidden="true"
+						/>
+					) : null}
 					<div className="codex-title">Redstone</div>
 				</div>
-				<div className="codex-header-right">
-					<div className="codex-chat-controls">
-						<select
-							className="codex-chat-select"
-							value={activeChatId}
-							onChange={handleChatChange}
-							disabled={busy}
-							aria-label="Chat"
-						>
-							{chatList.map((chat) => (
-								<option key={chat.id} value={chat.id}>
-									{chat.title}
-								</option>
-							))}
-						</select>
+				{showHeaderControls ? (
+					<div className="codex-header-right">
+						<div className="codex-chat-controls">
+							<select
+								className="codex-chat-select"
+								value={activeChatId}
+								onChange={handleChatChange}
+								disabled={busy}
+								aria-label="Chat"
+							>
+								{chatList.map((chat) => (
+									<option key={chat.id} value={chat.id}>
+										{chat.title}
+									</option>
+								))}
+							</select>
+							<button
+								type="button"
+								className="codex-chat-new"
+								onClick={handleNewChat}
+								disabled={busy}
+							>
+								New chat
+							</button>
+							<button
+								type="button"
+								className="codex-chat-settings"
+								onClick={handleOpenSettings}
+								aria-label="Open settings"
+							>
+								<SettingsIcon />
+							</button>
+						</div>
+						<div className="codex-header-meta">{tokenSummary}</div>
+					</div>
+				) : null}
+			</div>
+
+			{showBootstrap ? (
+				<div className="codex-bootstrap">
+					<div className="codex-bootstrap-title">
+						Step 1. Set up Codex CLI
+					</div>
+					<div className="codex-bootstrap-section">
+						<div className="codex-bootstrap-label">
+							Option 1: Use a detected Codex CLI
+						</div>
+						{hasCandidates ? (
+							<div className="codex-bootstrap-row">
+								<select
+									className="codex-bootstrap-select"
+									value={selectedCandidate}
+									onChange={(event) =>
+										setSelectedCandidate(event.target.value)
+									}
+									disabled={bootstrapBusy}
+									aria-label="Detected Codex CLI"
+								>
+									{codexCandidates.map((candidate) => (
+										<option
+											key={candidate.path}
+											value={candidate.path}
+										>
+											{candidate.label}
+										</option>
+									))}
+								</select>
+								<button
+									type="button"
+									className="codex-bootstrap-button"
+									onClick={handleSaveCandidate}
+									disabled={
+										bootstrapBusy || !selectedCandidate
+									}
+								>
+									Save
+								</button>
+							</div>
+						) : (
+							<div className="codex-bootstrap-muted">
+								No Codex binaries detected.
+							</div>
+						)}
+					</div>
+
+					<div className="codex-bootstrap-section">
+						<div className="codex-bootstrap-label">
+							Option 2: Download Codex CLI
+						</div>
 						<button
 							type="button"
-							className="codex-chat-new"
-							onClick={handleNewChat}
-							disabled={busy}
+							className="codex-bootstrap-button"
+							onClick={handleDownloadCodex}
+							disabled={bootstrapBusy || !pluginRoot}
 						>
-							New chat
-						</button>
-						<button
-							type="button"
-							className="codex-chat-settings"
-							onClick={handleOpenSettings}
-							aria-label="Open settings"
-						>
-							<SettingsIcon />
+							Download
 						</button>
 					</div>
-					<div className="codex-header-meta">{tokenSummary}</div>
+
+					<div className="codex-bootstrap-section">
+						<div className="codex-bootstrap-label">
+							Option 3: Install manually
+						</div>
+						<div className="codex-bootstrap-text">
+							Run <br/><code><b>npm install -g @openai/codex</b></code>
+							<br/> and click Check. (<span className="codex-empty-links">
+								<a
+									className="codex-link"
+									href={INSTALL_URL}
+									target="_blank"
+									rel="noreferrer"
+								>
+									Learn more
+								</a>
+							</span>)
+					
+						</div>
+						<button
+							type="button"
+							className="codex-bootstrap-button"
+							onClick={handleCheckInstall}
+							disabled={bootstrapBusy}
+						>
+							Check
+						</button>
+					</div>
+
+					{bootstrapError ? (
+						<div className="codex-bootstrap-error">
+							{bootstrapError}
+						</div>
+					) : null}
 				</div>
-			</div>
+			) : null}
 
 			{showInstallNotice ? (
 				<div className="codex-empty-state">
-					<div className="codex-empty-title">Codex is not installed</div>
+					<div className="codex-empty-title">
+						Codex is not installed
+					</div>
 					<div className="codex-empty-text">
-						Install it with <code>npm install -g @openai/codex</code>.
+						Install it with{" "}
+						<code>npm install -g @openai/codex</code>.
 					</div>
 					<div className="codex-empty-links">
 						<a
@@ -705,8 +971,28 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 			{showAuthNotice ? (
 				<div className="codex-empty-state">
 					<div className="codex-empty-title">Login to Codex CLI</div>
+					<div className="codex-auth-actions">
+						<button
+							type="button"
+							className="codex-auth-button"
+							onClick={handleBrowserLogin}
+							disabled={loginBusy || retryDisabled}
+						>
+							Authorize in browser
+						</button>
+						{loginUrl ? (
+							<a
+								className="codex-link"
+								href={loginUrl}
+								target="_blank"
+								rel="noreferrer"
+							>
+								Open login page
+							</a>
+						) : null}
+					</div>
 					<div className="codex-empty-text">
-						Run <code>codex</code> in your terminal to sign in.
+						Or run <code>codex</code> in your terminal to sign in and click button below.
 					</div>
 					<button
 						type="button"
@@ -714,14 +1000,21 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 						onClick={handleRetry}
 						disabled={retryDisabled}
 					>
-						Retry
+						Check
 					</button>
+					{loginError ? (
+						<div className="codex-empty-text codex-auth-error">
+							{loginError}
+						</div>
+					) : null}
 				</div>
 			) : null}
 
 			{showChecking ? (
 				<div className="codex-empty-state">
-					<div className="codex-empty-title">Checking Codex status</div>
+					<div className="codex-empty-title">
+						Checking Codex status
+					</div>
 					<div className="codex-empty-text">
 						Hold on while we verify your setup.
 					</div>
@@ -791,7 +1084,9 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 						/>
 						<div className="codex-input-actions">
 							<div className="codex-toolbox-field">
-								<span className="codex-toolbox-label">Context</span>
+								<span className="codex-toolbox-label">
+									Context
+								</span>
 								<select
 									className="codex-toolbox-select"
 									value={contextScope}
@@ -800,7 +1095,9 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 									aria-label="Context"
 								>
 									<option value="vault">Vault</option>
-									<option value="current-note">Current note</option>
+									<option value="current-note">
+										Current note
+									</option>
 								</select>
 							</div>
 							<button
@@ -835,7 +1132,9 @@ export function ChatApp({ app, dataStore }: ChatAppProps): JSX.Element {
 							</select>
 						</div>
 						<div className="codex-toolbox-field">
-							<span className="codex-toolbox-label">Reasoning</span>
+							<span className="codex-toolbox-label">
+								Reasoning
+							</span>
 							<select
 								className="codex-toolbox-select"
 								value={settings.reasoning}
