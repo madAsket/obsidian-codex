@@ -40,7 +40,7 @@
 
 - **Chat history built-in** — Codex manages conversation threads and can resume them across sessions.
 
-- **Directory-aware by design** — Make summaries, reports, and more for all the notes in your vault. Codex is built to work inside a project folder, so it can reason over files in your vault (with the safety constraints you choose).
+- **Directory-aware by design** — Make summaries, reports, and more for all the notes in your vault. Codex is built to work inside a project folder, so it can reason over files in your vault.
 
 ---
 

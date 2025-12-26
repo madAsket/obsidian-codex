@@ -3,7 +3,7 @@
 	"name": "Redstone Copilot",
 	"version": "0.3.0",
 	"minAppVersion": "0.15.0",
-	"description": "A modern, convenient Codex-powered AI-copilot sidebar for Obsidian",
+	"description": "Modern and convenient Codex-powered AI-copilot for Obsidian.",
 	"author": "Den Volkov aka MadAsket",
 	"authorUrl": "https://github.com/madAsket/obsidian-codex",
 	"fundingUrl": "https://buymeacoffee.com/madasket",
