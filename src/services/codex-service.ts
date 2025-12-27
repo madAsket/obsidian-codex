@@ -17,6 +17,12 @@ const DEFAULT_THREAD_OPTIONS: ThreadOptions = {
   skipGitRepoCheck: true,
 };
 
+function resolveSandboxMode(settings: CodexSettings): ThreadOptions["sandboxMode"] {
+  return settings.writeMode === "read-only"
+    ? "read-only"
+    : "workspace-write";
+}
+
 function getVaultBasePath(app: App): string | null {
   const adapter = app.vault.adapter;
   if (adapter instanceof FileSystemAdapter) {
@@ -70,6 +76,7 @@ export class CodexService {
       ...this.baseThreadOptions,
       model: settings.model,
       modelReasoningEffort: settings.reasoning,
+      sandboxMode: resolveSandboxMode(settings),
       networkAccessEnabled,
       webSearchEnabled,
     };
@@ -87,13 +94,14 @@ export class CodexService {
       ...this.baseThreadOptions,
       model: settings.model,
       modelReasoningEffort: settings.reasoning,
+      sandboxMode: resolveSandboxMode(settings),
       networkAccessEnabled,
       webSearchEnabled,
     };
     this.thread = null;
   }
 
-  async startLoginFlow(
+  startLoginFlow(
     handlers: { onUrl?: (url: string) => void } = {}
   ): Promise<{ url: string | null; exitCode: number | null }> {
     if (!this.codexInstalled) {

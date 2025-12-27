@@ -20,12 +20,14 @@ export type CodexReasoning =
   | "medium"
   | "high"
   | "xhigh";
+export type CodexWriteMode = "write" | "read-only";
 
 export type CodexPathMode = "unset" | "auto" | "custom";
 
 export type CodexSettings = {
   model: CodexModel;
   reasoning: CodexReasoning;
+  writeMode: CodexWriteMode;
   codexPathMode: CodexPathMode;
   codexPath: string | null;
   internetAccess: boolean;

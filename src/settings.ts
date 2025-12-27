@@ -10,6 +10,7 @@ import type {
   CodexModel,
   CodexPathMode,
   CodexReasoning,
+  CodexWriteMode,
   CodexSettings,
 } from "./types";
 import { getCodexCandidates } from "./utils/codex-path";
@@ -22,9 +23,12 @@ export const REASONING_OPTIONS = [
   "xhigh",
 ] as const;
 
+export const WRITE_MODE_OPTIONS = ["write", "read-only"] as const;
+
 export const DEFAULT_SETTINGS: CodexSettings = {
   model: "gpt-5.2",
   reasoning: "low",
+  writeMode: "write",
   codexPathMode: "unset",
   codexPath: null,
   internetAccess: false,
@@ -39,6 +43,10 @@ export function isReasoningOption(value: unknown): value is CodexReasoning {
   return REASONING_OPTIONS.includes(value as CodexReasoning);
 }
 
+export function isWriteModeOption(value: unknown): value is CodexWriteMode {
+  return WRITE_MODE_OPTIONS.includes(value as CodexWriteMode);
+}
+
 export function normalizeSettings(
   raw: Partial<CodexSettings> | null | undefined
 ): CodexSettings {
@@ -46,6 +54,9 @@ export function normalizeSettings(
   const reasoning = isReasoningOption(raw?.reasoning)
     ? raw?.reasoning
     : DEFAULT_SETTINGS.reasoning;
+  const writeMode = isWriteModeOption(raw?.writeMode)
+    ? raw?.writeMode
+    : DEFAULT_SETTINGS.writeMode;
   const codexPath =
     typeof raw?.codexPath === "string" && raw.codexPath.trim().length > 0
       ? raw.codexPath.trim()
@@ -73,6 +84,7 @@ export function normalizeSettings(
   return {
     model,
     reasoning,
+    writeMode,
     codexPathMode: normalizedMode,
     codexPath: normalizedMode === "custom" ? codexPath : null,
     internetAccess,
@@ -146,6 +158,23 @@ export class CodexSettingsTab extends PluginSettingTab {
         await this.access.saveSettings();
       });
     });
+
+    new Setting(containerEl)
+      .setName("Mode")
+      .setDesc("Choose read-only or write access.")
+      .addDropdown((dropdown) => {
+        dropdown.addOption("write", "Write");
+        dropdown.addOption("read-only", "Read-only");
+        dropdown.setValue(settings.writeMode);
+        dropdown.onChange(async (value) => {
+          const next = normalizeSettings({
+            ...this.access.getSettings(),
+            writeMode: value as CodexWriteMode,
+          });
+          this.access.updateSettings(next);
+          await this.access.saveSettings();
+        });
+      });
 
     const codexCandidates = getCodexCandidates(this.getPluginRoot());
     const codexOptions = [

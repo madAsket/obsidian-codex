@@ -8,9 +8,11 @@ type ChatInputProps = {
 	actionLabel: string;
 	actionDisabled: boolean;
 	contextScope: "vault" | "current-note";
+	writeMode: "write" | "read-only";
 	onInputChange: (value: string) => void;
 	onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
 	onContextChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+	onModeChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
 	onSend: () => void;
 	onStop: () => void;
 };
@@ -22,9 +24,11 @@ export function ChatInput({
 	actionLabel,
 	actionDisabled,
 	contextScope,
+	writeMode,
 	onInputChange,
 	onKeyDown,
 	onContextChange,
+	onModeChange,
 	onSend,
 	onStop,
 }: ChatInputProps): React.JSX.Element {
@@ -51,6 +55,19 @@ export function ChatInput({
 					>
 						<option value="vault">Vault</option>
 						<option value="current-note">Current note</option>
+					</select>
+				</div>
+				<div className="codex-toolbox-field">
+					<span className="codex-toolbox-label">Mode</span>
+					<select
+						className="codex-toolbox-select"
+						value={writeMode}
+						onChange={onModeChange}
+						disabled={busy}
+						aria-label="Mode"
+					>
+						<option value="write">Write</option>
+						<option value="read-only">Read-only</option>
 					</select>
 				</div>
 				<button

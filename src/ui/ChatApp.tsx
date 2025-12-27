@@ -13,6 +13,7 @@ import type {
 	CodexModel,
 	CodexReasoning,
 	CodexSettings,
+	CodexWriteMode,
 	Message,
 	NoteReference,
 } from "../types";
@@ -191,6 +192,7 @@ export function ChatApp({ app, dataStore }: ChatAppProps): React.JSX.Element {
 		service,
 		settings.model,
 		settings.reasoning,
+		settings.writeMode,
 		settings.internetAccess,
 		settings.webSearch,
 	]);
@@ -739,6 +741,13 @@ export function ChatApp({ app, dataStore }: ChatAppProps): React.JSX.Element {
 		[updateSettings]
 	);
 
+	const handleWriteModeChange = useCallback(
+		(event: React.ChangeEvent<HTMLSelectElement>) => {
+			updateSettings({ writeMode: event.target.value as CodexWriteMode });
+		},
+		[updateSettings]
+	);
+
 	const handleOpenSettings = useCallback(() => {
 		const appAny = app as App & {
 			commands?: { executeCommandById?: (id: string) => void };
@@ -813,9 +822,11 @@ export function ChatApp({ app, dataStore }: ChatAppProps): React.JSX.Element {
 						actionLabel={actionLabel}
 						actionDisabled={actionDisabled}
 						contextScope={contextScope}
+						writeMode={settings.writeMode}
 						onInputChange={(value) => setInput(value)}
 						onKeyDown={handleKeyDown}
 						onContextChange={handleContextChange}
+						onModeChange={handleWriteModeChange}
 						onSend={() => void handleSend()}
 						onStop={handleStop}
 					/>

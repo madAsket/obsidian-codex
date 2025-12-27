@@ -458,7 +458,6 @@
 
 .codex-input-actions {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 10px;
 }
@@ -468,10 +467,10 @@
   height: 34px;
   border-radius: 45px;
   border: none;
-  /* background: rgba(245, 245, 245, 0.96); */
   color: #111111;
   cursor: pointer;
   display: inline-flex;
+  margin:0 0 0 auto;
   align-items: center;
   justify-content: center;
   transition: transform 0.15s ease;

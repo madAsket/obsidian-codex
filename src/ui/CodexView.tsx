@@ -26,19 +26,21 @@ export class CodexView extends ItemView {
     return "message-circle-code";
   }
 
-  async onOpen(): Promise<void> {
+  onOpen(): Promise<void> {
     this.contentEl.empty();
     const container = this.contentEl.createDiv({ cls: "codex-view" });
     this.root = createRoot(container);
     this.root.render(
       <ChatApp app={this.app} dataStore={this.plugin.dataStore} />
     );
+    return Promise.resolve();
   }
 
-  async onClose(): Promise<void> {
+  onClose(): Promise<void> {
     if (this.root) {
       this.root.unmount();
       this.root = null;
     }
+    return Promise.resolve();
   }
 }

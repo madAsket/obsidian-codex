@@ -76,6 +76,7 @@ Add instructions like:
 
 - **Model and reasoning level** (applies immediately).
 - **Codex CLI** (binary selector).
+- **Mode** (Read-only or write mode for your vault).
 - **Internet access** (optional, off by default).
 - **Web search requests** (only available when Internet access is on).
 
